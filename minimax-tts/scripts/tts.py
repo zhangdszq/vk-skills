@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""MiniMax TTS - Convert text to speech using MiniMax API."""
+"""MiniMax TTS - Convert text to speech and auto-play."""
 
 import argparse
 import json
 import os
+import subprocess
 import sys
-import urllib.request
+import tempfile
 import urllib.error
+import urllib.request
 
 
 def load_env():
-    """Load .env from ~/.vk-cowork/.env (AI Team config), then fallback to cwd/.env and ~/.env."""
     env_paths = [
         os.path.expanduser("~/.vk-cowork/.env"),
         os.path.join(os.getcwd(), ".env"),
@@ -25,17 +26,28 @@ def load_env():
                     if line and not line.startswith("#") and "=" in line:
                         key, _, value = line.partition("=")
                         k = key.strip()
-                        if k not in env:  # first-wins: vk-cowork takes priority
+                        if k not in env:
                             env[k] = value.strip().strip('"').strip("'")
     return env
 
 
-def tts(text, output_path, voice_id=None, speed=1.0, emotion=None, model="speech-02-hd"):
+def play(path):
+    if sys.platform == "darwin":
+        subprocess.run(["afplay", path], check=False)
+    elif sys.platform.startswith("linux"):
+        subprocess.run(["mpg123", "-q", path], check=False)
+    else:
+        os.startfile(path)
+
+
+def tts(text, output_path=None, voice_id=None, speed=1.0, emotion=None,
+        model="speech-02-hd", no_play=False):
     env = load_env()
 
     api_key = os.environ.get("MINIMAX_TTS_API_KEY") or env.get("MINIMAX_TTS_API_KEY")
     group_id = os.environ.get("MINIMAX_TTS_GROUP_ID") or env.get("MINIMAX_TTS_GROUP_ID")
-    default_voice = os.environ.get("MINIMAX_TTS_VOICE_ID") or env.get("MINIMAX_TTS_VOICE_ID", "Chinese (Mandarin)_Soft_Girl")
+    default_voice = (os.environ.get("MINIMAX_TTS_VOICE_ID")
+                     or env.get("MINIMAX_TTS_VOICE_ID", "Chinese (Mandarin)_Soft_Girl"))
 
     if not api_key:
         print("Error: MINIMAX_TTS_API_KEY not set", file=sys.stderr)
@@ -44,13 +56,16 @@ def tts(text, output_path, voice_id=None, speed=1.0, emotion=None, model="speech
         print("Error: MINIMAX_TTS_GROUP_ID not set", file=sys.stderr)
         sys.exit(1)
 
-    voice_id = voice_id or default_voice
-    url = f"https://api.minimax.io/v1/t2a_v2?GroupId={group_id}"
+    use_tmp = output_path is None
+    if use_tmp:
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        output_path = tmp.name
+        tmp.close()
 
     payload = {
         "model": model,
         "text": text,
-        "voice_id": voice_id,
+        "voice_id": voice_id or default_voice,
         "speed": speed,
         "format": "mp3",
         "audio_sample_rate": 32000,
@@ -59,14 +74,10 @@ def tts(text, output_path, voice_id=None, speed=1.0, emotion=None, model="speech
     if emotion:
         payload["emotion"] = emotion
 
-    data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        f"https://api.minimax.io/v1/t2a_v2?GroupId={group_id}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
 
@@ -74,8 +85,7 @@ def tts(text, output_path, voice_id=None, speed=1.0, emotion=None, model="speech
         with urllib.request.urlopen(req) as resp:
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8")
-        print(f"HTTP Error {e.code}: {body}", file=sys.stderr)
+        print(f"HTTP Error {e.code}: {e.read().decode()}", file=sys.stderr)
         sys.exit(1)
 
     status = result.get("base_resp", {})
@@ -85,26 +95,30 @@ def tts(text, output_path, voice_id=None, speed=1.0, emotion=None, model="speech
 
     audio_hex = result.get("data", {}).get("audio", "")
     if not audio_hex:
-        print("Error: No audio data in response", file=sys.stderr)
-        print(json.dumps(result, ensure_ascii=False, indent=2), file=sys.stderr)
+        print(f"Error: no audio in response\n{json.dumps(result, ensure_ascii=False)}", file=sys.stderr)
         sys.exit(1)
 
-    audio_bytes = bytes.fromhex(audio_hex)
     with open(output_path, "wb") as f:
-        f.write(audio_bytes)
+        f.write(bytes.fromhex(audio_hex))
 
-    size_kb = len(audio_bytes) / 1024
-    print(f"✅ Saved to {output_path} ({size_kb:.1f} KB)")
+    if not no_play:
+        play(output_path)
+
+    if use_tmp:
+        os.unlink(output_path)
+    else:
+        print(output_path)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MiniMax Text-to-Speech")
-    parser.add_argument("text", help="Text to convert to speech")
-    parser.add_argument("output", help="Output MP3 file path")
-    parser.add_argument("--voice", help="Voice ID (default: from env MINIMAX_TTS_VOICE_ID)")
-    parser.add_argument("--speed", type=float, default=1.0, help="Speech speed 0.5-2.0 (default: 1.0)")
-    parser.add_argument("--emotion", help="Emotion: happy/sad/angry/fearful/disgusted/surprised/neutral")
-    parser.add_argument("--model", default="speech-02-hd", help="Model (default: speech-02-hd)")
+    parser = argparse.ArgumentParser(description="MiniMax TTS — generates and plays audio")
+    parser.add_argument("text", help="Text to speak")
+    parser.add_argument("output", nargs="?", default=None, help="Save path (omit to play and discard)")
+    parser.add_argument("--voice", help="Voice ID")
+    parser.add_argument("--speed", type=float, default=1.0)
+    parser.add_argument("--emotion", help="happy/sad/angry/fearful/disgusted/surprised/neutral")
+    parser.add_argument("--model", default="speech-02-hd")
+    parser.add_argument("--no-play", action="store_true", help="Save only, do not play")
     args = parser.parse_args()
 
     tts(
@@ -114,6 +128,7 @@ def main():
         speed=args.speed,
         emotion=args.emotion,
         model=args.model,
+        no_play=args.no_play,
     )
 
 
