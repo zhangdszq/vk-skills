@@ -10,6 +10,8 @@ import tempfile
 import urllib.error
 import urllib.request
 
+BASE_URL = "https://api.minimaxi.com/v1/t2a_v2"
+
 
 def load_env():
     env_paths = [
@@ -40,8 +42,8 @@ def play(path):
         os.startfile(path)
 
 
-def tts(text, output_path=None, voice_id=None, speed=1.0, emotion=None,
-        model="speech-02-hd", no_play=False):
+def tts(text, output_path=None, voice_id=None, speed=1.0, vol=1.0, pitch=0,
+        emotion=None, model="speech-02-hd", no_play=False):
     env = load_env()
 
     api_key = os.environ.get("MINIMAX_TTS_API_KEY") or env.get("MINIMAX_TTS_API_KEY")
@@ -62,20 +64,20 @@ def tts(text, output_path=None, voice_id=None, speed=1.0, emotion=None,
         output_path = tmp.name
         tmp.close()
 
+    voice_setting = {"voice_id": voice_id or default_voice, "speed": speed, "vol": vol, "pitch": pitch}
+    if emotion:
+        voice_setting["emotion"] = emotion
+
     payload = {
         "model": model,
         "text": text,
-        "voice_id": voice_id or default_voice,
-        "speed": speed,
-        "format": "mp3",
-        "audio_sample_rate": 32000,
-        "bitrate": 128000,
+        "voice_setting": voice_setting,
+        "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"},
+        "group_id": group_id,
     }
-    if emotion:
-        payload["emotion"] = emotion
 
     req = urllib.request.Request(
-        f"https://api.minimax.io/v1/t2a_v2?GroupId={group_id}",
+        BASE_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
@@ -116,6 +118,8 @@ def main():
     parser.add_argument("output", nargs="?", default=None, help="Save path (omit to play and discard)")
     parser.add_argument("--voice", help="Voice ID")
     parser.add_argument("--speed", type=float, default=1.0)
+    parser.add_argument("--vol", type=float, default=1.0)
+    parser.add_argument("--pitch", type=int, default=0)
     parser.add_argument("--emotion", help="happy/sad/angry/fearful/disgusted/surprised/neutral")
     parser.add_argument("--model", default="speech-02-hd")
     parser.add_argument("--no-play", action="store_true", help="Save only, do not play")
@@ -126,6 +130,8 @@ def main():
         output_path=args.output,
         voice_id=args.voice,
         speed=args.speed,
+        vol=args.vol,
+        pitch=args.pitch,
         emotion=args.emotion,
         model=args.model,
         no_play=args.no_play,
