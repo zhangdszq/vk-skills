@@ -42,3 +42,20 @@ python3 ~/.claude/skills/minimax-tts/scripts/tts.py "文本" --emotion happy --s
 ## 情绪
 
 `happy` / `sad` / `angry` / `fearful` / `disgusted` / `surprised` / `neutral`（仅 `speech-02-*` 模型）
+
+## 语气词标签（仅 speech-2.8-hd / speech-2.8-turbo）
+
+直接嵌入文本中，例如：`"(inhale)好的，(emm)让我想想。(sighs)"`
+
+| 标签 | 效果 | 标签 | 效果 |
+|------|------|------|------|
+| `(laughs)` | 笑声 | `(chuckle)` | 轻笑 |
+| `(sighs)` | 叹气 | `(breath)` | 换气 |
+| `(inhale)` | 吸气 | `(exhale)` | 呼气 |
+| `(pant)` | 喘气 | `(gasps)` | 倒吸气 |
+| `(emm)` | 嗯 | `(humming)` | 哼唱 |
+| `(coughs)` | 咳嗽 | `(clear-throat)` | 清嗓子 |
+| `(groans)` | 呻吟 | `(sniffs)` | 吸鼻子 |
+| `(snorts)` | 喷鼻息 | `(burps)` | 打嗝 |
+| `(lip-smacking)` | 咂嘴 | `(hissing)` | 嘶嘶声 |
+| `(sneezes)` | 喷嚏 | | |
