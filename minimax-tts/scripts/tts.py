@@ -43,7 +43,7 @@ def play(path):
 
 
 def tts(text, output_path=None, voice_id=None, speed=1.0, vol=1.0, pitch=0,
-        emotion=None, model="speech-02-hd", no_play=False):
+        emotion=None, model="speech-2.8-hd", no_play=False):
     env = load_env()
 
     api_key = os.environ.get("MINIMAX_TTS_API_KEY") or env.get("MINIMAX_TTS_API_KEY")
@@ -121,7 +121,7 @@ def main():
     parser.add_argument("--vol", type=float, default=1.0)
     parser.add_argument("--pitch", type=int, default=0)
     parser.add_argument("--emotion", help="happy/sad/angry/fearful/disgusted/surprised/neutral")
-    parser.add_argument("--model", default="speech-02-hd")
+    parser.add_argument("--model", default="speech-2.8-hd")
     parser.add_argument("--no-play", action="store_true", help="Save only, do not play")
     args = parser.parse_args()
 
