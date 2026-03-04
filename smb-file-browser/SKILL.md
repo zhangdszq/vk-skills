@@ -10,22 +10,35 @@ description: >
 
 # 教研 SMB Server 文件检索
 
-## 快速连接
+## 首次连接
+
+配置文件：`~/.vk-cowork/smb-config.json`
+
+如果配置不存在，**必须先向用户询问以下信息**（不要猜测或编造）：
+1. 服务器主机名（如 HT-FILE2）
+2. 企业域名（如 vipkid.work）
+3. 默认共享名（如 DMFile）
+4. 用户名（不含邮箱域名部分）
+5. 密码
+
+收集完毕后通过 CLI 参数初始化配置并连接：
 
 ```bash
-python3 scripts/smb_connect.py
+python3 scripts/smb_connect.py \
+  --server <主机名> --share <共享名> --user <用户名> --password '<密码>' \
+  --init --domain <企业域名>
 ```
 
-首次运行会交互式询问：服务器主机名、企业域名、默认共享、用户名、密码，
-保存到 `~/.vk-cowork/smb-config.json`（权限 600）。后续直接连接。
+配置存在后直接连接：
+
+```bash
+python3 scripts/smb_connect.py                         # 用已存配置连接
+python3 scripts/smb_connect.py --share 双师智学2026      # 连不同共享
+python3 scripts/smb_connect.py --list-shares            # 列出所有共享
+python3 scripts/smb_connect.py --reconfigure            # 重新输入凭据（同样先问用户）
+```
 
 自动执行：加载配置 → 检测 Clash TUN → 获取企业 DNS → 修补 fake-ip → 解析真实 IP → 挂载。
-
-```bash
-python3 scripts/smb_connect.py --share 双师智学2026   # 连不同共享
-python3 scripts/smb_connect.py --list-shares           # 列出所有共享
-python3 scripts/smb_connect.py --reconfigure           # 重新输入凭据
-```
 
 ## 文件搜索（带本地缓存）
 

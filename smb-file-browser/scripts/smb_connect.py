@@ -74,8 +74,37 @@ def get_config(args):
     """Load config, prompt if missing, apply CLI overrides."""
     cfg = load_config()
 
-    if args.reconfigure or not cfg.get("server") or not cfg.get("user") or not cfg.get("password"):
-        cfg = prompt_config(cfg)
+    if args.init:
+        if args.server:
+            cfg["server"] = args.server
+        if args.share:
+            cfg["default_share"] = args.share
+        if args.user:
+            cfg["user"] = args.user
+        if args.password:
+            cfg["password"] = args.password
+        if args.domain:
+            cfg["domain"] = args.domain
+        if not all(cfg.get(k) for k in ("server", "user", "password")):
+            print("[error] --init requires --server, --user, --password")
+            sys.exit(1)
+        save_config(cfg)
+        return cfg
+
+    if args.reconfigure:
+        if sys.stdin.isatty():
+            cfg = prompt_config(cfg)
+        else:
+            print("[error] --reconfigure requires interactive terminal, or use --init with CLI args")
+            sys.exit(1)
+
+    if not cfg.get("server") or not cfg.get("user") or not cfg.get("password"):
+        if sys.stdin.isatty():
+            cfg = prompt_config(cfg)
+        else:
+            print("[error] No config found at", CONFIG_FILE)
+            print("[hint] Run with --init --server X --user Y --password Z to create config")
+            sys.exit(1)
 
     if args.server:
         cfg["server"] = args.server
@@ -313,6 +342,8 @@ def main():
     parser.add_argument("--check", action="store_true", help="Check existing mounts")
     parser.add_argument("--list-shares", action="store_true", help="List server shares")
     parser.add_argument("--reconfigure", action="store_true", help="Re-enter and save credentials")
+    parser.add_argument("--init", action="store_true", help="Create/update config from CLI args and save")
+    parser.add_argument("--domain", help="Corporate domain for DNS (e.g. vipkid.work)")
     parser.add_argument("--drive", default=MOUNT_BASE_WIN, help="Windows drive letter")
     args = parser.parse_args()
 
