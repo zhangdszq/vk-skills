@@ -12,6 +12,7 @@ Agent Skills 技能库。
 | [minimax-tts](minimax-tts/) | 使用 MiniMax API 将文本转成语音并自动播放，支持情绪与语速参数 |
 | [smb-file-browser](smb-file-browser/) | 企业 SMB 文件服务器检索工具，供**教研团队**使用，支持共享浏览、快速搜索与文件下载 |
 | [aliyun-sms-bulk](aliyun-sms-bulk/) | 阿里云短信群发工具，供**市场部**使用，支持单发与批量群发（单次最多 100 个号码），适用于营销通知、活动推送等场景 |
+| [adjust-report](adjust-report/) | Adjust 归因数据分析工具，供**投放运营**使用，拉取 Report API 数据生成 SKAN（iOS）和标准（Android）漏斗报表，自动计算转化率并给出优化建议 |
 
 ## 安装
 
