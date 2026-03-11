@@ -8,7 +8,7 @@ Usage:
   python3 smb_search.py /tmp/smb_mounts/DMFile --ext pptx,xlsx --max-depth 3
   python3 smb_search.py /tmp/smb_mounts/DMFile --size-gt 100M --top 20
   python3 smb_search.py /tmp/smb_mounts/DMFile --tree --max-depth 2
-  python3 smb_search.py /tmp/smb_mounts/DMFile --rebuild   # force rebuild index
+  python3 smb_search.py /tmp/smb_mounts/DMFile --rebuild
 """
 
 import argparse
@@ -21,6 +21,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from preflight import ensure_cache_dir, ensure_existing_path
+
 
 CACHE_DIR = Path.home() / ".cache" / "smb-file-index"
 
@@ -28,16 +30,16 @@ CACHE_DIR = Path.home() / ".cache" / "smb-file-index"
 def parse_size(s):
     s = s.strip().upper()
     units = {"B": 1, "K": 1024, "M": 1024**2, "G": 1024**3}
-    for u, m in units.items():
-        if s.endswith(u):
-            return float(s[:-1]) * m
+    for unit, multiplier in units.items():
+        if s.endswith(unit):
+            return float(s[:-1]) * multiplier
     return float(s)
 
 
 def fmt_size(n):
-    for u in ["B", "KB", "MB", "GB"]:
+    for unit in ["B", "KB", "MB", "GB"]:
         if n < 1024:
-            return f"{n:.1f}{u}"
+            return f"{n:.1f}{unit}"
         n /= 1024
     return f"{n:.1f}TB"
 
@@ -52,13 +54,20 @@ def cache_path_for(root):
     return CACHE_DIR / f"{name}_{key}.json"
 
 
+def ensure_runtime_ready(root=None):
+    """Validate local runtime and optional SMB mount path."""
+    if not ensure_cache_dir(CACHE_DIR):
+        return False
+    return ensure_existing_path(root, label="Search root", should_be_dir=True, mount_hint=True)
+
+
 def build_index(root, max_depth=4, max_files=10000):
     """Walk SMB share and build file index with progress reporting."""
     files = []
     count = 0
     dirs_scanned = 0
     root_depth = root.rstrip(os.sep).count(os.sep)
-    t0 = time.time()
+    start_ts = time.time()
 
     for dirpath, dirnames, filenames in os.walk(root):
         depth = dirpath.rstrip(os.sep).count(os.sep) - root_depth
@@ -67,30 +76,34 @@ def build_index(root, max_depth=4, max_files=10000):
         dirs_scanned += 1
         if dirs_scanned % 10 == 0:
             rel = os.path.relpath(dirpath, root)
-            elapsed = time.time() - t0
+            elapsed = time.time() - start_ts
             print(
                 f"\r[index] {count} files, {dirs_scanned} dirs, {elapsed:.0f}s ... {rel[:50]}",
-                end="", flush=True, file=sys.stderr,
+                end="",
+                flush=True,
+                file=sys.stderr,
             )
-        for f in filenames:
-            if f.startswith("."):
+        for filename in filenames:
+            if filename.startswith("."):
                 continue
             count += 1
             if count > max_files:
                 print(f"\n[warn] Index capped at {max_files} files.", file=sys.stderr)
                 return files
-            filepath = os.path.join(dirpath, f)
+            filepath = os.path.join(dirpath, filename)
             try:
-                st = os.stat(filepath)
-                files.append({
-                    "path": os.path.relpath(filepath, root),
-                    "size": st.st_size,
-                    "mtime": st.st_mtime,
-                })
+                stat = os.stat(filepath)
+                files.append(
+                    {
+                        "path": os.path.relpath(filepath, root),
+                        "size": stat.st_size,
+                        "mtime": stat.st_mtime,
+                    }
+                )
             except OSError:
                 pass
 
-    elapsed = time.time() - t0
+    elapsed = time.time() - start_ts
     print(
         f"\r[index] Done: {count} files, {dirs_scanned} dirs in {elapsed:.1f}s{' ' * 30}",
         file=sys.stderr,
@@ -100,11 +113,11 @@ def build_index(root, max_depth=4, max_files=10000):
 
 def load_or_build_index(root, max_depth, max_files, force_rebuild=False):
     """Load cached index or build a new one."""
-    cp = cache_path_for(root)
-    if not force_rebuild and cp.exists():
-        age_hours = (time.time() - cp.stat().st_mtime) / 3600
+    cache_path = cache_path_for(root)
+    if not force_rebuild and cache_path.exists():
+        age_hours = (time.time() - cache_path.stat().st_mtime) / 3600
         try:
-            data = json.loads(cp.read_text())
+            data = json.loads(cache_path.read_text())
             meta = data.get("meta", {})
             print(
                 f"[cache] Loaded {len(data['files'])} files from index "
@@ -130,12 +143,12 @@ def load_or_build_index(root, max_depth, max_files, force_rebuild=False):
         },
         "files": files,
     }
-    cp.write_text(json.dumps(data, ensure_ascii=False, indent=None))
-    print(f"[index] Saved to {cp}", file=sys.stderr)
+    cache_path.write_text(json.dumps(data, ensure_ascii=False, indent=None))
+    print(f"[index] Saved to {cache_path}", file=sys.stderr)
     return files
 
 
-def search(all_files, args, root):
+def search(all_files, args):
     results = []
     for entry in all_files:
         filename = os.path.basename(entry["path"])
@@ -144,7 +157,7 @@ def search(all_files, args, root):
             continue
 
         if args.ext:
-            exts = [e.strip().lower().lstrip(".") for e in args.ext.split(",")]
+            exts = [ext.strip().lower().lstrip(".") for ext in args.ext.split(",")]
             file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
             if file_ext not in exts:
                 continue
@@ -154,18 +167,17 @@ def search(all_files, args, root):
         if args.size_lt and entry["size"] > parse_size(args.size_lt):
             continue
 
-        if args.path_contains:
-            if args.path_contains.lower() not in entry["path"].lower():
-                continue
+        if args.path_contains and args.path_contains.lower() not in entry["path"].lower():
+            continue
 
         results.append(entry)
 
     if args.sort == "size":
-        results.sort(key=lambda x: x["size"], reverse=True)
+        results.sort(key=lambda item: item["size"], reverse=True)
     elif args.sort == "date":
-        results.sort(key=lambda x: x["mtime"], reverse=True)
+        results.sort(key=lambda item: item["mtime"], reverse=True)
     elif args.sort == "name":
-        results.sort(key=lambda x: x["path"].lower())
+        results.sort(key=lambda item: item["path"].lower())
 
     if args.top:
         results = results[:args.top]
@@ -178,28 +190,28 @@ def print_tree(root, max_depth=2, prefix=""):
         entries = sorted(os.listdir(root))
     except OSError:
         return
-    dirs = [e for e in entries if os.path.isdir(os.path.join(root, e)) and not e.startswith(".")]
-    files = [e for e in entries if os.path.isfile(os.path.join(root, e)) and not e.startswith(".")]
+    dirs = [entry for entry in entries if os.path.isdir(os.path.join(root, entry)) and not entry.startswith(".")]
+    files = [entry for entry in entries if os.path.isfile(os.path.join(root, entry)) and not entry.startswith(".")]
 
-    for i, f in enumerate(files):
-        connector = "└── " if (i == len(files) - 1 and not dirs) else "├── "
+    for idx, filename in enumerate(files):
+        connector = "└── " if (idx == len(files) - 1 and not dirs) else "├── "
         try:
-            sz = fmt_size(os.path.getsize(os.path.join(root, f)))
+            size = fmt_size(os.path.getsize(os.path.join(root, filename)))
         except OSError:
-            sz = "?"
-        print(f"{prefix}{connector}{f}  ({sz})")
+            size = "?"
+        print(f"{prefix}{connector}{filename}  ({size})")
 
-    for i, d in enumerate(dirs):
-        connector = "└── " if i == len(dirs) - 1 else "├── "
-        print(f"{prefix}{connector}{d}/")
+    for idx, dirname in enumerate(dirs):
+        connector = "└── " if idx == len(dirs) - 1 else "├── "
+        print(f"{prefix}{connector}{dirname}/")
         if max_depth > 1:
-            ext = "    " if i == len(dirs) - 1 else "│   "
-            print_tree(os.path.join(root, d), max_depth - 1, prefix + ext)
+            ext = "    " if idx == len(dirs) - 1 else "│   "
+            print_tree(os.path.join(root, dirname), max_depth - 1, prefix + ext)
 
 
 def main():
     parser = argparse.ArgumentParser(description="SMB File Search (with index cache)")
-    parser.add_argument("root", help="Mount path to search")
+    parser.add_argument("root", nargs="?", help="Mount path to search")
     parser.add_argument("--name", help="Filename glob pattern (e.g. '*.pptx')")
     parser.add_argument("--ext", help="Comma-separated extensions (e.g. 'pptx,xlsx')")
     parser.add_argument("--path-contains", help="Filter by path substring (e.g. 'level 1')")
@@ -212,10 +224,19 @@ def main():
     parser.add_argument("--tree", action="store_true", help="Show directory tree (no cache, direct SMB)")
     parser.add_argument("--rebuild", action="store_true", help="Force rebuild index")
     parser.add_argument("--stats", action="store_true", help="Show index statistics")
+    parser.add_argument("--check-tools", action="store_true", help="Check runtime readiness and optional mount path")
     args = parser.parse_args()
 
-    if not os.path.isdir(args.root):
-        print(f"[error] Path not found: {args.root}")
+    if args.check_tools:
+        if ensure_runtime_ready(args.root):
+            print("[ok] SMB search runtime is ready.")
+            return
+        sys.exit(1)
+
+    if not args.root:
+        parser.error("root is required unless --check-tools is used")
+
+    if not ensure_runtime_ready(args.root):
         sys.exit(1)
 
     if args.tree:
@@ -227,27 +248,27 @@ def main():
     all_files = load_or_build_index(root, args.max_depth, args.max_files, args.rebuild)
 
     if args.stats:
-        total_size = sum(f["size"] for f in all_files)
+        total_size = sum(item["size"] for item in all_files)
         exts = {}
-        for f in all_files:
-            ext = os.path.basename(f["path"]).rsplit(".", 1)[-1].lower() if "." in f["path"] else "(none)"
+        for item in all_files:
+            ext = os.path.basename(item["path"]).rsplit(".", 1)[-1].lower() if "." in item["path"] else "(none)"
             exts[ext] = exts.get(ext, 0) + 1
         print(f"Total files: {len(all_files)}")
         print(f"Total size:  {fmt_size(total_size)}")
-        print(f"\nTop extensions:")
-        for ext, cnt in sorted(exts.items(), key=lambda x: -x[1])[:15]:
-            print(f"  .{ext:10s} {cnt:>5} files")
+        print("\nTop extensions:")
+        for ext, count in sorted(exts.items(), key=lambda pair: -pair[1])[:15]:
+            print(f"  .{ext:10s} {count:>5} files")
         return
 
-    results = search(all_files, args, root)
+    results = search(all_files, args)
     if not results:
         print("[info] No files found matching criteria.")
         return
 
     print(f"{'Size':>10}  {'Modified':>16}  Path")
     print("-" * 80)
-    for r in results:
-        print(f"{fmt_size(r['size']):>10}  {fmt_time(r['mtime']):>16}  {r['path']}")
+    for result in results:
+        print(f"{fmt_size(result['size']):>10}  {fmt_time(result['mtime']):>16}  {result['path']}")
     print(f"\n[info] {len(results)} file(s) found.")
 
 

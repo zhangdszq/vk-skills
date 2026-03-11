@@ -2,7 +2,7 @@
 """
 SMB Server connector with automatic proxy/DNS bypass.
 Handles Clash Verge fake-ip, cross-platform mounting, and authentication.
-Credentials are stored in ~/.config/smb-file-browser/config.json on first use.
+Credentials are stored in ~/.vk-cowork/smb-config.json on first use.
 
 Usage:
   python3 smb_connect.py                          # use saved config (or prompt)
@@ -19,27 +19,32 @@ import os
 import platform
 import re
 import socket
-import subprocess
 import sys
 import time
 from pathlib import Path
+
+from preflight import ensure_connect_prerequisites, run
 
 
 CONFIG_DIR = Path.home() / ".vk-cowork"
 CONFIG_FILE = CONFIG_DIR / "smb-config.json"
 MOUNT_BASE_MAC = "/tmp/smb_mounts"
 MOUNT_BASE_WIN = "Z:"
+DEFAULT_DOMAIN = "vipkid.work"
 
 
-# ── Config management ──────────────────────────────────────────────
+# Config management
 
 def load_config():
+    cfg = {}
     if CONFIG_FILE.exists():
         try:
-            return json.loads(CONFIG_FILE.read_text())
+            cfg = json.loads(CONFIG_FILE.read_text())
         except (json.JSONDecodeError, OSError):
             pass
-    return {}
+    if not cfg.get("domain"):
+        cfg["domain"] = DEFAULT_DOMAIN
+    return cfg
 
 
 def save_config(cfg):
@@ -54,7 +59,7 @@ def prompt_config(existing=None):
     cfg = existing or {}
     print("── SMB 服务器配置 ──")
     cfg["server"] = input(f"  服务器主机名 [{cfg.get('server', '')}]: ").strip() or cfg.get("server", "")
-    cfg["domain"] = input(f"  企业域名 [{cfg.get('domain', '')}]: ").strip() or cfg.get("domain", "")
+    cfg["domain"] = input(f"  企业域名 [{cfg.get('domain', DEFAULT_DOMAIN)}]: ").strip() or cfg.get("domain", DEFAULT_DOMAIN)
     cfg["default_share"] = input(f"  默认共享名 [{cfg.get('default_share', '')}]: ").strip() or cfg.get("default_share", "")
     cfg["user"] = input(f"  用户名(不含邮箱域名) [{cfg.get('user', '')}]: ").strip() or cfg.get("user", "")
     pwd = getpass.getpass(f"  密码 [{'****' if cfg.get('password') else ''}]: ")
@@ -114,21 +119,13 @@ def get_config(args):
         cfg["user"] = args.user
     if args.password:
         cfg["password"] = args.password
+    if args.domain:
+        cfg["domain"] = args.domain
 
     return cfg
 
 
-# ── Network helpers ────────────────────────────────────────────────
-
-def run(cmd, timeout=15, shell=True):
-    try:
-        r = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=timeout)
-        return r.returncode, r.stdout.strip(), r.stderr.strip()
-    except subprocess.TimeoutExpired:
-        return -1, "", "timeout"
-    except Exception as e:
-        return -1, "", str(e)
-
+# Network helpers
 
 def detect_dhcp_dns():
     code, out, _ = run("ipconfig getpacket en0")
@@ -185,7 +182,7 @@ def patch_clash_dns_for_domain(domain, dns_servers):
     if not os.path.exists(config_path):
         return False
 
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     domain_pattern = f"+.{domain}"
@@ -225,7 +222,7 @@ def patch_clash_dns_for_domain(domain, dns_servers):
         needs_update = True
 
     if needs_update:
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             f.write(content)
         code, _, _ = run(
             f"curl -s --unix-socket {sock_path} -X PUT "
@@ -278,14 +275,14 @@ def resolve_server(hostname, domain):
 
 def check_port(ip, port=445, timeout=5):
     try:
-        s = socket.create_connection((ip, port), timeout=timeout)
-        s.close()
+        sock = socket.create_connection((ip, port), timeout=timeout)
+        sock.close()
         return True
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
 
 
-# ── Mount ──────────────────────────────────────────────────────────
+# Mount
 
 def mount_smb_mac(ip, share, user, password):
     mount_point = os.path.join(MOUNT_BASE_MAC, share.replace(" ", "_"))
@@ -331,21 +328,30 @@ def list_shares(ip, user, password):
     print(out)
 
 
-# ── Main ───────────────────────────────────────────────────────────
-
 def main():
     parser = argparse.ArgumentParser(description="SMB Server Connector")
     parser.add_argument("--server", help="Server hostname (override config)")
     parser.add_argument("--share", help="Share name (override config)")
     parser.add_argument("--user", help="Username (override config)")
     parser.add_argument("--password", help="Password (override config)")
+    parser.add_argument("--check-tools", action="store_true", help="Check and install required command line tools if needed")
     parser.add_argument("--check", action="store_true", help="Check existing mounts")
     parser.add_argument("--list-shares", action="store_true", help="List server shares")
     parser.add_argument("--reconfigure", action="store_true", help="Re-enter and save credentials")
     parser.add_argument("--init", action="store_true", help="Create/update config from CLI args and save")
-    parser.add_argument("--domain", help="Corporate domain for DNS (e.g. vipkid.work)")
+    parser.add_argument("--domain", help=f"Corporate domain for DNS (default: {DEFAULT_DOMAIN})")
     parser.add_argument("--drive", default=MOUNT_BASE_WIN, help="Windows drive letter")
     args = parser.parse_args()
+
+    setup_status = ensure_connect_prerequisites()
+    if setup_status == "pending":
+        return
+    if setup_status == "error":
+        sys.exit(1)
+
+    if args.check_tools:
+        print("[ok] Required command line tools are available.")
+        return
 
     if args.check:
         if platform.system() == "Darwin":

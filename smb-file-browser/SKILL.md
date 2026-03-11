@@ -14,19 +14,42 @@ description: >
 
 配置文件：`~/.vk-cowork/smb-config.json`
 
+企业域名默认预设为 `vipkid.work`。
+
+连接前先检测 command line tools 是否可用。`smb_connect.py` 会自动检查依赖；
+在 macOS 上如果缺少 Xcode Command Line Tools，会自动触发 `xcode-select --install`。
+也可以先手动执行一次：
+
+```bash
+python3 scripts/smb_connect.py --check-tools
+```
+
+如果安装窗口弹出，先完成安装，再重新运行 SMB 连接命令。
+
+搜索和下载脚本也支持独立自检：
+
+```bash
+python3 scripts/smb_search.py --check-tools
+python3 scripts/smb_search.py /tmp/smb_mounts/DMFile/双师智学2026 --check-tools
+
+python3 scripts/smb_download.py --check-tools
+python3 scripts/smb_download.py /tmp/smb_mounts/DMFile/双师智学2026 ./downloads --check-tools
+```
+
 如果配置不存在，**必须先向用户询问以下信息**（不要猜测或编造）：
 1. 服务器主机名（如 HT-FILE2）
-2. 企业域名（如 vipkid.work）
-3. 默认共享名（如 DMFile）
-4. 用户名（不含邮箱域名部分）
-5. 密码
+2. 默认共享名（如 DMFile）
+3. 用户名（不含邮箱域名部分）
+4. 密码
+
+除非用户明确说明企业域名不是 `vipkid.work`，否则不要额外询问域名，直接使用该默认值。
 
 收集完毕后通过 CLI 参数初始化配置并连接：
 
 ```bash
 python3 scripts/smb_connect.py \
   --server <主机名> --share <共享名> --user <用户名> --password '<密码>' \
-  --init --domain <企业域名>
+  --init --domain vipkid.work
 ```
 
 配置存在后直接连接：
@@ -80,7 +103,7 @@ python3 scripts/smb_download.py /tmp/smb_mounts/DMFile/双师智学2026/level\ 1
 python3 scripts/smb_download.py /tmp/smb_mounts/DMFile/双师智学2026/ ./downloads/ --dry-run
 ```
 
-支持 `.partial` 断点续传——中断后重跑同一命令自动继续。
+支持 `.partial` 断点续传，中断后重跑同一命令自动继续。
 
 ## 低带宽策略
 

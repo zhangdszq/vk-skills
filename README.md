@@ -20,7 +20,7 @@ Agent Skills 技能库。
 </tr>
 <tr>
   <td><a href="smb-file-browser/">smb-file-browser</a></td>
-  <td>企业 SMB 文件服务器检索工具，支持共享浏览、快速搜索与文件下载</td>
+  <td>企业 SMB 文件服务器检索工具，支持默认域名、自检、共享浏览、快速搜索与低带宽下载</td>
 </tr>
 <tr>
   <td rowspan="2">市场</td>

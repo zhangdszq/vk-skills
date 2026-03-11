@@ -26,7 +26,29 @@ ipconfig getpacket en0             # 获取 DHCP 分配的企业 DNS
      -d '{"path":"<config_path>"}'
    ```
 
-## 2. 认证失败
+## 2. 缺少 Command Line Tools
+
+**症状**: 脚本提示缺少 `mount_smbfs`、`smbutil`、`dig` 等命令，或首次运行前要求安装工具。
+
+**诊断**:
+```bash
+python3 smb_connect.py --check-tools
+xcode-select -p
+```
+
+**解决**:
+1. macOS 下若缺少 Xcode Command Line Tools，脚本会自动触发：
+   ```bash
+   xcode-select --install
+   ```
+2. 完成安装后，重新运行：
+   ```bash
+   python3 smb_connect.py --check-tools
+   python3 smb_connect.py
+   ```
+3. 若仍提示缺少命令，检查当前 shell 的 `PATH` 是否包含系统命令目录。
+
+## 3. 认证失败
 
 **症状**: `smbutil: server rejected the authentication`
 
@@ -34,7 +56,7 @@ ipconfig getpacket en0             # 获取 DHCP 分配的企业 DNS
 
 **解决**: 运行 `python3 smb_connect.py --reconfigure` 重新输入凭据。密码中的 `@` 由脚本自动处理。
 
-## 3. mount_smbfs 静默失败 (exit 1, 无输出)
+## 4. mount_smbfs 静默失败 (exit 1, 无输出)
 
 **症状**: `mount_smbfs` 返回退出码 1，无任何错误信息。
 
@@ -47,7 +69,7 @@ rmdir /tmp/smb_mounts/<share>
 python3 smb_connect.py
 ```
 
-## 4. 大文件下载中断
+## 5. 大文件下载中断
 
 **症状**: 复制大文件时网络中断。
 
@@ -57,7 +79,7 @@ python3 smb_download.py /path/to/source ./local/ --bw-limit 5M
 ```
 中断后重新运行同一命令即可自动续传。
 
-## 5. Windows 系统连接
+## 6. Windows 系统连接
 
 ```cmd
 python3 smb_connect.py
