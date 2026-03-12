@@ -1,0 +1,15 @@
+{
+  "host": "10.23.16.15",
+  "port": 9030,
+  "user": "zhangxinwei",
+  "password": "ZN?F7l@1",
+  "database": "intl_analysis",
+  "driver": "auto",
+  "sales_table": "vk_sr_intl_sa_cc_quality_monitor_da",
+  "sales_join_key": "staffName",
+  "sales_join_field": "staff_name",
+  "sales_date_field": "pt",
+  "sales_amount_field": "total_new_gmv_usd",
+  "sales_metric_expr": "SUM(total_new_gmv_usd)",
+  "sales_extra_where": ""
+}

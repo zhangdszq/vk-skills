@@ -1,0 +1,25 @@
+{
+  "name": "lily-sales-training-video",
+  "version": "1.0.0",
+  "description": "销冠Lily的销售心法培训视频",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render HelloWorld out/video.mp4",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.271",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.271"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config": "^4.0.271",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/web": "^0.0.147",
+    "eslint": "^8.43.0",
+    "prettier": "^2.8.8",
+    "typescript": "^5.1.6"
+  }
+}
