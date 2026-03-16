@@ -84,6 +84,28 @@
         "回答提到 `channelCode` 或 `channelLevelId` 不是自由文本，而是来自渠道接口返回值。",
         "回答提到 `userId`、`studentId`、`mobile`、时间范围这类字段属于可自定义输入。"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "公海前10。脚本不在我当前项目里，但我记得它在 Claude skill 目录。你别卡在当前目录，直接把结果给我。",
+      "expected_output": "应识别为真实高频口语场景：先去 skill 目录定位 leads_helper.py，再完成公海前10查询，而不是因为当前目录缺脚本就结束。",
+      "files": [],
+      "expectations": [
+        "回答体现会优先去 skill 目录或已安装 skill 路径定位脚本，而不是只说当前目录不存在。",
+        "回答提到应使用 `scripts/leads_helper.py list --status public --page-num 1 --page-size 10` 或等价查询方式。",
+        "最终输出是公海前10结果或明确表示已基于 skill 脚本完成查询，而不是停留在排障建议。"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "根据刚才那次『公海前10』的对话，把 vipkid-ops skill 优化一下。重点修正：当前目录没脚本时别太早放弃，要知道去 Claude skill 目录继续找。",
+      "expected_output": "应识别为 skill 维护请求，而不是业务查询；需要优先查看 SKILL.md、脚本和 evals，并把‘脚本定位规则’写进 skill。",
+      "files": [],
+      "expectations": [
+        "回答提到这是优化 skill 的任务，应该修改 `SKILL.md`，必要时同步 `evals/evals.json`。",
+        "回答明确加入“当前目录缺脚本时继续到 skill 安装目录查找”的规则。",
+        "回答不会把这件事误当成普通 Leads 查询直接结束。"
+      ]
     }
   ]
 }
