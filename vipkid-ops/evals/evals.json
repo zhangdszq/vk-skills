@@ -1,0 +1,29 @@
+{
+  "skill_name": "vipkid-ops",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我在沙特区的线索库里查 userId=123456 这条线索，如果存在，把当前渠道、节点、流转标记、归属 GCS 和最近跟进记录整理给我。",
+      "expected_output": "应使用 leads 只读查询能力，先核验地区与认证，再返回线索摘要，不直接做写操作。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我需要把 userId 123456 和 234567 两条线索分配给 GCC staffId=9988，你先告诉我会影响哪些线索，确认后再执行。",
+      "expected_output": "应先说明这是批量写操作，展示目标 userId、staffId、角色和影响范围，等待确认后才调用 allot。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "帮我给 userId=123456 加上冻结标签 tagId=18，如果失败把 code 和 msg 原样告诉我。",
+      "expected_output": "应识别为标签写操作，先确认参数，再调用 add-tag，并在失败时保留后端错误信息。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "我要上传一份权益 Excel 到线索库，文件是 ./equity.xlsx。请先提醒我确认地区、模板和影响，再执行上传。",
+      "expected_output": "应走线索库上传工作流，先提醒模板与地区码，获得确认后再调用 upload equity。",
+      "files": []
+    }
+  ]
+}
