@@ -26,6 +26,7 @@ from starrocks_query import (
     build_sales_query,
     load_starrocks_config,
     run_query,
+    sql_literal,
 )
 
 
@@ -35,6 +36,10 @@ CONVERSATION_SCORE_ENDPOINT = "/openapi/conversation/v1/conversations/:conversat
 DEAL_SCORE_ENDPOINT = "/openapi/crm/v1/deals/:deal_id/score_result"
 DEFAULT_EMPLOYEES_FILE = Path(__file__).resolve().parent.parent / "data" / "employees.json"
 MAX_WINDOW_DAYS = 7
+DEFAULT_EMPLOYMENT_TABLE = "vk_gl_leads_staff_team_assignment_relation"
+DEFAULT_EMPLOYMENT_NAME_FIELD = "staff_name"
+DEFAULT_EMPLOYMENT_STAFF_ID_FIELD = "staff_id"
+DEFAULT_EMPLOYMENT_TERMINATION_FIELD = "termination_date"
 
 
 def load_json_value(raw: str | None) -> Any:
@@ -91,6 +96,25 @@ def normalize_name(value: str) -> str:
     return " ".join(value.strip().lower().split())
 
 
+def is_nullish(value: Any) -> bool:
+    """Treat empty-like values as null."""
+    if value is None:
+        return True
+    text = str(value).strip().lower()
+    return text in {"", "none", "null"}
+
+
+def extract_database_staff_id(origin_staff_id: Any) -> str | None:
+    """Extract the StarRocks staff_id prefix from the built-in Megaview mapping."""
+    if origin_staff_id is None:
+        return None
+    text = str(origin_staff_id).strip()
+    if not text:
+        return None
+    prefix = text.split("|", 1)[0].strip()
+    return prefix or None
+
+
 def resolve_requested_employees(
     employees: list[dict[str, Any]],
     names: list[str],
@@ -139,6 +163,102 @@ def resolve_requested_employees(
     if not resolved:
         raise ValueError("Provide at least one --employee-name or --staff-id")
     return resolved
+
+
+def build_database_employee_lookup(
+    employees: list[dict[str, Any]],
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    database: str,
+    driver: str,
+) -> tuple[dict[str, dict[str, Any]], str, str]:
+    """Resolve employee active/inactive status from the StarRocks employee master table."""
+    raw_names = sorted({str(item.get("staffName", "")).strip() for item in employees if item.get("staffName")})
+    db_staff_ids = sorted(
+        {
+            database_staff_id
+            for database_staff_id in (extract_database_staff_id(item.get("staffId")) for item in employees)
+            if database_staff_id
+        }
+    )
+
+    where_parts: list[str] = []
+    if raw_names:
+        where_parts.append(
+            f"{DEFAULT_EMPLOYMENT_NAME_FIELD} IN ({', '.join(sql_literal(name) for name in raw_names)})"
+        )
+    if db_staff_ids:
+        where_parts.append(
+            "CAST("
+            f"{DEFAULT_EMPLOYMENT_STAFF_ID_FIELD} AS STRING"
+            f") IN ({', '.join(sql_literal(staff_id) for staff_id in db_staff_ids)})"
+        )
+    if not where_parts:
+        raise ValueError("No employee identifiers available for database employee lookup")
+
+    sql = (
+        "SELECT "
+        f"CAST({DEFAULT_EMPLOYMENT_STAFF_ID_FIELD} AS STRING) AS database_staff_id, "
+        f"{DEFAULT_EMPLOYMENT_NAME_FIELD} AS database_staff_name, "
+        "business_line, "
+        "staff_role, "
+        "CAST(hire_date AS STRING) AS hire_date, "
+        f"CAST({DEFAULT_EMPLOYMENT_TERMINATION_FIELD} AS STRING) AS termination_date "
+        f"FROM {DEFAULT_EMPLOYMENT_TABLE} "
+        f"WHERE {' OR '.join(f'({part})' for part in where_parts)} "
+        f"ORDER BY {DEFAULT_EMPLOYMENT_NAME_FIELD}, {DEFAULT_EMPLOYMENT_TERMINATION_FIELD}"
+    )
+    rows, driver_used = run_query(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+        sql=sql,
+        driver=driver,
+    )
+
+    rows_by_name: dict[str, list[dict[str, Any]]] = {}
+    rows_by_db_staff_id: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        database_staff_name = normalize_name(str(row.get("database_staff_name", "")))
+        if database_staff_name:
+            rows_by_name.setdefault(database_staff_name, []).append(row)
+        database_staff_id = str(row.get("database_staff_id", "")).strip()
+        if database_staff_id:
+            rows_by_db_staff_id.setdefault(database_staff_id, []).append(row)
+
+    lookup: dict[str, dict[str, Any]] = {}
+    for employee in employees:
+        staff_id = str(employee["staffId"])
+        candidate_rows: list[dict[str, Any]] = []
+        seen_candidates: set[tuple[str, str]] = set()
+        candidate_keys = [
+            *rows_by_name.get(normalize_name(str(employee.get("staffName", ""))), []),
+            *rows_by_db_staff_id.get(extract_database_staff_id(staff_id) or "", []),
+        ]
+        for row in candidate_keys:
+            dedupe_key = (
+                str(row.get("database_staff_id", "")).strip(),
+                normalize_name(str(row.get("database_staff_name", ""))),
+            )
+            if dedupe_key not in seen_candidates:
+                seen_candidates.add(dedupe_key)
+                candidate_rows.append(row)
+
+        active_rows = [row for row in candidate_rows if is_nullish(row.get("termination_date"))]
+        preferred_row = active_rows[0] if active_rows else (candidate_rows[0] if candidate_rows else None)
+        status = "active" if active_rows else ("inactive" if candidate_rows else "unknown")
+        lookup[staff_id] = {
+            "status": status,
+            "active_first_applied": True,
+            "matched_row_count": len(candidate_rows),
+            "active_row_count": len(active_rows),
+            "preferred_record": preferred_row,
+        }
+    return lookup, sql, driver_used
 
 
 def api_get(
@@ -608,6 +728,15 @@ def main() -> int:
             extra_where=args.sales_extra_where,
             driver=args.starrocks_driver,
         )
+        database_employee_lookup, database_employee_sql, database_employee_driver = build_database_employee_lookup(
+            employees=selected,
+            host=args.starrocks_host,
+            port=args.starrocks_port,
+            user=args.starrocks_user,
+            password=args.starrocks_password,
+            database=args.starrocks_database,
+            driver=args.starrocks_driver,
+        )
 
         employee_outputs: list[dict[str, Any]] = []
         for employee in selected:
@@ -617,6 +746,26 @@ def main() -> int:
             notes: list[str] = []
             user_info: dict[str, Any] = {}
             open_user_id = None
+            database_employee = database_employee_lookup.get(
+                str(staff_id),
+                {
+                    "status": "unknown",
+                    "active_first_applied": True,
+                    "matched_row_count": 0,
+                    "active_row_count": 0,
+                    "preferred_record": None,
+                },
+            )
+            if database_employee["status"] == "active":
+                notes.append("Database employee status: active. Default performance review keeps this employee in scope.")
+            elif database_employee["status"] == "inactive":
+                notes.append(
+                    "Database employee status: inactive. Historical metrics are still returned because the employee was explicitly requested."
+                )
+            else:
+                notes.append(
+                    "Database employee status: unknown. Continue with employees.json mapping, but treat performance-review conclusions carefully."
+                )
             try:
                 user_payload = fetch_user_info(token, str(staff_id))
                 user_info = user_payload.get("data", {}).get("user", {})
@@ -681,6 +830,7 @@ def main() -> int:
                 {
                     "staffName": staff_name,
                     "staffId": staff_id,
+                    "database_employee": database_employee,
                     "megaview_mapping": {
                         "origin_user_id": str(staff_id),
                         "open_user_id": str(open_user_id),
@@ -703,9 +853,32 @@ def main() -> int:
                 }
             )
 
-        review_rankings = build_review_rankings(employee_outputs)
+        ranking_scope = [
+            employee
+            for employee in employee_outputs
+            if employee.get("database_employee", {}).get("status") != "inactive"
+        ]
+        if not ranking_scope:
+            ranking_scope = employee_outputs
+        comparison_notes = compare_employees(ranking_scope)
+        if len(ranking_scope) != len(employee_outputs):
+            comparison_notes.insert(0, "Default performance review ranking excludes database-inactive employees.")
+        review_rankings = build_review_rankings(ranking_scope)
         review_lookup = {str(item["staffId"]): item for item in review_rankings}
         for employee in employee_outputs:
+            if employee.get("database_employee", {}).get("status") == "inactive" and len(ranking_scope) != len(
+                employee_outputs
+            ):
+                employee["performance_review"] = {
+                    "priority": "inactive_out_of_scope",
+                    "risk_score": 0.0,
+                    "recommendation": "historical_review_only",
+                    "reasons": [
+                        "Excluded from the default performance review ranking because the database employee status is inactive."
+                    ],
+                    "guardrail": "Use for historical review only, not automatic elimination.",
+                }
+                continue
             employee["performance_review"] = review_lookup.get(
                 str(employee["staffId"]),
                 {
@@ -742,11 +915,14 @@ def main() -> int:
                 "join_field": args.sales_join_field,
                 "driver": sales_driver,
                 "sales_sql": sales_sql,
+                "database_employee_table": DEFAULT_EMPLOYMENT_TABLE,
+                "database_employee_driver": database_employee_driver,
+                "database_employee_sql": database_employee_sql,
                 "config_file": resolved_starrocks_config_file,
             },
             "employees": employee_outputs,
             "comparison": {
-                "notes": compare_employees(employee_outputs),
+                "notes": comparison_notes,
                 "review_priority_ranking": review_rankings,
                 "guardrail": "Use this ranking for manager review, coaching prioritization, and manual performance review only. Do not treat it as an automatic firing decision.",
             },

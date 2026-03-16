@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import sys
 from pathlib import Path
@@ -13,8 +14,10 @@ from typing import Any
 import requests
 
 from employee_performance import (
+    DEFAULT_EMPLOYMENT_TABLE,
     DEFAULT_EMPLOYEES_FILE,
     api_get,
+    build_database_employee_lookup,
     extract_rule_average,
     fetch_user_info,
     list_employee_conversations,
@@ -28,11 +31,47 @@ from megaview_request import (
     request_token,
     resolve_credentials,
 )
+from starrocks_query import DEFAULT_STARROCKS_CONFIG_PATH, load_starrocks_config
 
 
 DEFAULT_SCORE_SCAN_LIMIT = 120
 DEFAULT_ASR_PREVIEW_LINES = 12
 IGNORED_SUMMARY_CONTENT = {"", "未提及"}
+
+
+def default_database_employee_status() -> dict[str, Any]:
+    """Return a stable fallback for database employee scope."""
+    return {
+        "status": "unknown",
+        "active_first_applied": True,
+        "matched_row_count": 0,
+        "active_row_count": 0,
+        "preferred_record": None,
+    }
+
+
+def apply_optional_starrocks_defaults(args: argparse.Namespace) -> tuple[argparse.Namespace, str]:
+    """Fill optional StarRocks args from the bundled config when available."""
+    config_path = Path(args.starrocks_config_file).expanduser()
+    if not config_path.exists():
+        return args, str(config_path)
+
+    config = load_starrocks_config(config_path)
+    field_map = {
+        "starrocks_host": "host",
+        "starrocks_port": "port",
+        "starrocks_user": "user",
+        "starrocks_password": "password",
+        "starrocks_database": "database",
+        "starrocks_driver": "driver",
+    }
+    for arg_name, config_name in field_map.items():
+        current_value = getattr(args, arg_name, None)
+        if current_value in (None, ""):
+            config_value = config.get(config_name)
+            if config_value not in (None, ""):
+                setattr(args, arg_name, config_value)
+    return args, str(config_path)
 
 
 def evenly_sample(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
@@ -204,8 +243,23 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--score-scan-limit", type=int, default=DEFAULT_SCORE_SCAN_LIMIT)
     parser.add_argument("--asr-preview-lines", type=int, default=DEFAULT_ASR_PREVIEW_LINES)
+    parser.add_argument(
+        "--starrocks-config-file",
+        default=os.getenv("STARROCKS_CONFIG_FILE", str(DEFAULT_STARROCKS_CONFIG_PATH)),
+    )
+    parser.add_argument("--starrocks-host", default=os.getenv("STARROCKS_HOST"))
+    parser.add_argument("--starrocks-port", type=int, default=int(os.getenv("STARROCKS_PORT", "9030")))
+    parser.add_argument("--starrocks-user", default=os.getenv("STARROCKS_USER"))
+    parser.add_argument("--starrocks-password", default=os.getenv("STARROCKS_PASSWORD"))
+    parser.add_argument("--starrocks-database", default=os.getenv("STARROCKS_DATABASE"))
+    parser.add_argument(
+        "--starrocks-driver",
+        choices=["auto", "pymysql", "cli"],
+        default=os.getenv("STARROCKS_DRIVER", "auto"),
+    )
     parser.add_argument("--out", help="Optional JSON output path")
     args = parser.parse_args()
+    args, resolved_starrocks_config_file = apply_optional_starrocks_defaults(args)
 
     try:
         app_key, app_secret, credentials_file = resolve_credentials(
@@ -228,15 +282,59 @@ def main() -> int:
 
         employee = selected[0]
         origin_user_id = str(employee["staffId"])
+        notes: list[str] = []
+        database_employee = default_database_employee_status()
+        database_employee_sql = None
+        database_employee_driver = None
+        missing_starrocks = [
+            key
+            for key, value in {
+                "starrocks_host": args.starrocks_host,
+                "starrocks_user": args.starrocks_user,
+                "starrocks_password": args.starrocks_password,
+                "starrocks_database": args.starrocks_database,
+            }.items()
+            if not value
+        ]
+        if missing_starrocks:
+            notes.append(
+                "Database employee status check skipped because optional StarRocks connection info is incomplete."
+            )
+        else:
+            try:
+                database_lookup, database_employee_sql, database_employee_driver = build_database_employee_lookup(
+                    employees=[employee],
+                    host=args.starrocks_host,
+                    port=args.starrocks_port,
+                    user=args.starrocks_user,
+                    password=args.starrocks_password,
+                    database=args.starrocks_database,
+                    driver=args.starrocks_driver,
+                )
+                database_employee = database_lookup.get(origin_user_id, default_database_employee_status())
+                if database_employee["status"] == "active":
+                    notes.append("Database employee status: active.")
+                elif database_employee["status"] == "inactive":
+                    notes.append(
+                        "Database employee status: inactive. Keep this coaching pack as historical review because the employee was explicitly requested."
+                    )
+                else:
+                    notes.append(
+                        "Database employee status: unknown. Continue with Megaview evidence, but treat historical employment context carefully."
+                    )
+            except Exception as exc:  # noqa: BLE001
+                notes.append(f"Database employee status check failed and was skipped: {exc}")
+
         user_info: dict[str, Any] = {}
         open_user_id = None
         try:
             user_payload = fetch_user_info(token, origin_user_id)
             user_info = user_payload.get("data", {}).get("user", {})
             open_user_id = user_info.get("open_user_id")
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             user_info = {}
             open_user_id = None
+            notes.append(f"Megaview user lookup failed, continue with origin_user_id conversation query: {exc}")
 
         conversations = list_employee_conversations(
             token=token,
@@ -317,12 +415,21 @@ def main() -> int:
                 "asr_preview_lines": args.asr_preview_lines,
                 "employees_file": str(Path(args.employees_file).resolve()),
                 "megaview_credentials_file": credentials_file,
+                "starrocks_config_file": resolved_starrocks_config_file,
             },
             "employee": {
                 "staffName": employee["staffName"],
                 "staffId": employee["staffId"],
                 "origin_user_id": origin_user_id,
                 "open_user_id": open_user_id,
+                "database_employee": database_employee,
+            },
+            "starrocks": {
+                "database": args.starrocks_database,
+                "database_employee_table": DEFAULT_EMPLOYMENT_TABLE,
+                "database_employee_driver": database_employee_driver,
+                "database_employee_sql": database_employee_sql,
+                "config_file": resolved_starrocks_config_file,
             },
             "selection": {
                 "conversation_count": len(conversations),
@@ -330,6 +437,7 @@ def main() -> int:
                 "scored_candidate_count": len(scored_candidates),
             },
             "samples": training_samples,
+            "notes": notes,
         }
         write_output(payload, args.out)
         return 0

@@ -4,22 +4,26 @@
     {
       "id": 1,
       "prompt": "帮我看 Abdelrahman Al-Hamdan 最近 30 天的员工表现。我想看会话评分、客户评分、会话数量，再和 StarRocks 的销售额对比。Megaview 这边员工要按内置名单映射。先不要真的执行，只告诉我你会怎么查，以及会用哪些接口和脚本。",
-      "expected_output": "应该识别为员工分析场景，先从内置 employees.json 解析姓名到 staffId，并明确 staffId 在当前数据里就是 Megaview origin_user_id。",
+      "expected_output": "应该识别为以 intl_analysis 驱动的员工分析场景，先说明会用 `vk_gl_leads_staff_team_assignment_relation` 校验该员工是否仍在职，再使用内置的 intl_analysis 默认销售表做业务锚点，最后从 employees.json 解析姓名到 staffId，并明确 staffId 在当前数据里就是 Megaview origin_user_id。",
       "files": [],
       "expectations": [
+        "The answer states that seller analysis first checks active employee scope in `vk_gl_leads_staff_team_assignment_relation` before using Megaview as explanation.",
+        "The answer states that seller analysis is anchored on the bundled `intl_analysis` setup before using Megaview as explanation.",
         "The answer mentions the built-in employees.json mapping and states that staffId is used as Megaview origin_user_id in the current analytics flow.",
         "The answer includes GET /openapi/organization/v1/origin_users/:origin_user_id and POST /openapi/conversation/v1/origin_conversations/list in the Megaview analysis chain.",
         "The answer mentions using employee_performance.py rather than only ad-hoc curl snippets.",
-        "The answer explains that the built-in default StarRocks config can be used directly for sales comparison."
+        "The answer explains that the built-in default StarRocks config in `intl_analysis` can be used directly for sales comparison."
       ]
     },
     {
       "id": 2,
-      "prompt": "我想比较王志全和程小艳最近 14 天的表现。员工名单已经内置。先告诉我现在还缺什么，以及最终输出会包含哪些指标。",
-      "expected_output": "应该优先使用内置 StarRocks 默认配置，不再追问连接信息；如果员工不在内置名单里，只指出员工映射缺失，并给出多员工分析时的最终输出结构。",
+      "prompt": "我想比较 Mohammad Qasem 和 Salman Awaysheh 最近 14 天的表现。员工名单已经内置。先告诉我现在还缺什么，以及最终输出会包含哪些指标。",
+      "expected_output": "应该优先使用内置 StarRocks 默认配置，不再追问连接信息，也不需要补充员工映射；应先按数据库在职员工规则确认比较范围，再按内置名单解析两位销售，并给出多员工分析时的最终输出结构。",
       "files": [],
       "expectations": [
         "The answer does not ask the user to restate StarRocks connection information when the built-in default config is sufficient.",
+        "The answer mentions that database-active employees are preferred in the default performance-review scope.",
+        "The answer states that both employee names can be resolved directly from the built-in employees.json mapping.",
         "The answer states that the result will include conversation_count, average_conversation_score, average_customer_score, and sales_amount or equivalent sales metric.",
         "The answer supports multiple employees rather than treating the request as a single-employee flow."
       ]
@@ -45,6 +49,103 @@
         "The answer reframes elimination into manual performance review priority rather than an automatic firing decision.",
         "The answer mentions using sales_amount, average_conversation_score, average_customer_score, and conversation_count or equivalent metrics.",
         "The answer includes a human-review guardrail such as urgent review, coaching first, or manual review."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "我不只想看销售额，我还想看 AE 市场的订单实付、退款和库存消耗，最好还能按销售看。先不要执行，只告诉我你会查哪张 StarRocks 表、哪些字段，以及会不会继续用默认的 GMV 表。",
+      "expected_output": "应该识别为非默认 StarRocks 路由场景，不应继续强行使用默认的 vk_sr_intl_sa_cc_quality_monitor_da，而应转向 order_detail 类 live reporting table，并说明 join/time/metric 字段。",
+      "files": [],
+      "expectations": [
+        "The answer states that the default seller-performance table is not the right first choice for order-detail metrics.",
+        "The answer mentions a live order-detail table such as vk_sr_intl_ae_order_detail_lv.",
+        "The answer names verified fields such as order_given_staff_name or order_given_staff_id, pay_time, deal_price, refund_price, and inventory-related fields."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "你文档里提到的 vk_intl_dw_evt_pack_order_analyse_gl_mv 可以直接在现在这个库里查吗？如果不行，你会怎么处理？",
+      "expected_output": "应该区分文档中的 metric-definition table 和当前库里的 live reporting table，不应把文档表名当成线上已验证可查对象；应先验证存在性，再映射到可用 live table。",
+      "files": [],
+      "expectations": [
+        "The answer distinguishes documented metric-definition table names from verified live reporting table names.",
+        "The answer says the table should be verified in `intl_analysis` before querying.",
+        "The answer explains that if the documented table is not visible, the skill should route to the closest verified live reporting table instead of pretending the documented table can be queried directly."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "先按沙特 leads-to-order 转化视角，帮我设计分析路径。我想从销售团队、渠道、LP、试听完课、TCC 一路看到订单，再决定哪些销售要去 Megaview 深挖。先不要执行。",
+      "expected_output": "应该明确以沙特 leads-to-order 为主线，先用 intl_analysis 的转化链路表定义增长问题，再逐层扩展到销售团队、渠道、LP、试听完课与完课后跟进、TCC，最后才落到个人 Megaview 深挖。",
+      "files": [],
+      "expectations": [
+        "The answer states that the workflow starts from Saudi `leads-to-order` conversion in `intl_analysis`.",
+        "The answer mentions `vk_sr_intl_sa_leads_to_order_details_lv` as the primary entry table.",
+        "The answer expands the path to channel, LP, trial completion / post-trial follow-up, TCC, and seller-level drill-down before mentioning Megaview.",
+        "The answer treats Megaview as the final individual evidence layer rather than the initial business anchor."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "我想看沙特最近 30 天各渠道花费、7d ROAS，以及这些渠道后续被哪些销售承接得更好。你会先查什么表、看什么字段？",
+      "expected_output": "应该识别为投放到销售承接的增长链路问题，先看沙特营销花费和 7d ROAS，再衔接到 leads-to-order 或渠道跟进表，并补看试听是否完课、完课后跟进是否及时，输出渠道、销售、转化三层关系。",
+      "files": [],
+      "expectations": [
+        "The answer mentions `vk_sr_intl_sa_marketing_spend_daily_lv` and `vk_sr_intl_sa_marketing_spend_7d_roas_lv`.",
+        "The answer mentions `vk_sr_intl_sa_leads_to_order_details_lv` or `vk_sr_intl_gl_leads_channel_analysis_follow_record_lv` for downstream seller handoff.",
+        "The answer names fields such as `mkt_channel_name`, `spend`, `total_new_gmv_usd_noncohort`, `roas_noncohort`, `last_ccid_name`, or similar seller-handoff fields.",
+        "The answer can mention trial-completion or post-trial follow-up fields such as `first_trial_completed_follow_time_jordan` or `first_trial_completed_schedule_follow_time_diff_hour` when the conversion handoff needs more diagnosis."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "先从沙特转化链路里找出最近 30 天承接较差的销售，再告诉我你会怎么去 Megaview 深挖个人问题。不要真的执行。",
+      "expected_output": "应该先说明会用 intl_analysis 定位承接较差的销售，并在 leads-to-order 主链路里补看试听完课与完课后跟进切片，优先保留数据库仍在职的销售进入默认复核范围，再用 employees.json 映射到 Megaview origin_user_id，最后用会话列表、评分、摘要和 ASR 做个人会话深挖。",
+      "files": [],
+      "expectations": [
+        "The answer states that poor-performing sellers are identified in `intl_analysis` first.",
+        "The answer can mention the trial-completion / post-trial follow-up slice before escalating to Megaview.",
+        "The answer mentions preferring database-active employees for the default performance-review scope.",
+        "The answer mentions resolving the selected seller from employees.json to Megaview `origin_user_id`.",
+        "The answer includes the Megaview drill-down chain: conversation list, score_result, summary_pro, and asr_data.",
+        "The answer keeps Megaview as the personal deep-dive layer after the sales-chain diagnosis."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "先帮我看一个已经离职的销售最近 30 天历史表现。我知道他不在当前在职名单里，但我还是想做离职复盘。你会怎么处理？",
+      "expected_output": "应该说明默认绩效复核范围优先看数据库在职员工，但如果用户明确要复盘离职员工，可以继续做历史分析，同时把该员工标成 inactive / historical review，不和当前在职员工混做默认 active review ranking。",
+      "files": [],
+      "expectations": [
+        "The answer explains that the default performance-review scope prefers database-active employees.",
+        "The answer says an explicitly requested inactive employee can still be analyzed as a historical review.",
+        "The answer says the inactive employee should not be mixed into the default active review ranking.",
+        "The answer still uses employees.json only as the Megaview mapping layer for the selected employee."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "抓一个已经离职的销售最近 30 天代表性会话，我就是想做离职复盘。你会怎么走？先不要执行。",
+      "expected_output": "应该说明带教样本仍可继续抽取，但会先尽量用 `vk_gl_leads_staff_team_assignment_relation` 确认该员工已离职，并把结果标成 historical review；Megaview 侧仍然通过 employees.json 映射到 origin_user_id 再拉会话、评分、摘要和 ASR。",
+      "files": [],
+      "expectations": [
+        "The answer says coaching sample extraction can continue for an explicitly requested inactive employee.",
+        "The answer mentions checking `vk_gl_leads_staff_team_assignment_relation` first when StarRocks is available.",
+        "The answer labels the output as historical review rather than a normal active coaching target.",
+        "The answer still uses employees.json as the Megaview mapping layer and includes conversation list, score_result, summary_pro, and asr_data."
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "我想看沙特最近 30 天从线索到试听完课、再到首单的转化，重点看哪些销售在试听完课后跟进慢，导致后面成单差。先不要执行，只告诉我你会怎么拆。",
+      "expected_output": "应该明确仍以沙特 leads-to-order 为主线，不只看线索到订单总转化，还要单独补看试听是否完课、完课后多久跟进，以及这些因素如何影响后续首单；应优先使用 `vk_sr_intl_sa_leads_to_order_details_lv`，必要时补 `vk_sr_intl_sa_trial_contact_summary_lv` 做试听前后触达解释。",
+      "files": [],
+      "expectations": [
+        "The answer states that trial completion and post-trial follow-up are part of the default Saudi leads-to-order chain.",
+        "The answer mentions `vk_sr_intl_sa_leads_to_order_details_lv` as the first table to inspect.",
+        "The answer mentions fields such as `first_trial_completed_follow_time_jordan` and `first_trial_completed_schedule_follow_time_diff_hour` or equivalent trial-completion timing fields.",
+        "The answer can mention `vk_sr_intl_sa_trial_contact_summary_lv` for pre-contact or post-contact explanation if needed.",
+        "The answer keeps Megaview as a later drill-down layer instead of the initial business diagnosis layer."
       ]
     }
   ]

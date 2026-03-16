@@ -12,13 +12,21 @@ Read this file when the user asks to:
 
 Turn a time range plus one employee into a compact coaching pack:
 
-1. resolve the employee from `data/employees.json`
-2. use `staffId` as Megaview `origin_user_id`
-3. if needed, query the user record only as a presence check or metadata supplement
-4. list conversations in the requested time range with `origin_user_id`
-5. pick representative low / median / high score conversations
-6. fetch score details, summary, and ASR preview
-7. explain what should be copied or corrected in training
+1. prefer starting from a seller already identified by `intl_analysis`
+2. when StarRocks is available, check the employee in `vk_gl_leads_staff_team_assignment_relation` first
+3. resolve the employee from `data/employees.json`
+4. use `staffId` as Megaview `origin_user_id`
+5. if needed, query the user record only as a presence check or metadata supplement
+6. list conversations in the requested time range with `origin_user_id`
+7. pick representative low / median / high score conversations
+8. fetch score details, summary, and ASR preview
+9. explain what should be copied or corrected in training
+
+Driver rule:
+
+- `intl_analysis` decides which seller or period deserves coaching attention
+- Megaview provides the call-level evidence and dialogue examples
+- if the explicitly requested employee is already inactive in StarRocks, keep the pack as historical review rather than blocking the coaching workflow
 
 ## Confirmed endpoints
 
@@ -101,6 +109,7 @@ Use:
 It already:
 
 - resolves the employee
+- checks database employee status first when StarRocks config is available
 - uses `origin_user_id` directly for the conversation batch query
 - samples representative conversations
 - fetches score, summary, and ASR preview

@@ -199,3 +199,223 @@ GET /auth/api/auth/role/all
 # 商品类型列表
 GET /international/api/product/type/list
 ```
+
+---
+
+## 家长详情页聚合详情
+
+```
+GET /international/api/parent/v2/getParentDetailWithChildById?id=<parentId>
+```
+
+返回结构：
+
+| 字段 | 说明 |
+|------|------|
+| `data.parent` | 家长基础信息 |
+| `data.parentExt` | 扩展信息，如 memo / city / nationality / monthBudget / tags / referrerId / timeZone |
+| `data.childs` | 学生列表 |
+
+`vipkid-ops` 的 `parent-detail` 会把 `parent` 和 `parentExt` 合并后做摘要输出。
+
+---
+
+## 家长资料修改
+
+```
+POST /international/uc/api/parent/v2/updateInfo
+```
+
+前端以表单方式传参，最少包含：
+
+| 字段 | 说明 |
+|------|------|
+| `id` | 家长 ID |
+| 其余任一字段 | 要更新的字段 |
+
+当前页面实际写入过的字段：
+
+- `city`
+- `hasOverseaStudyExp`
+- `ethnicGroup`
+- `nationality`
+- `monthBudget`
+- `memo`
+
+> 接口支持的字段可能比页面更多；`vipkid-ops` 当前只显式开放上述字段，避免误写。
+
+---
+
+## 备注联系方式
+
+```
+POST /international/api/parent/editOtherContacts
+```
+
+表单字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `parentId` | long | 必填 |
+| `otherContacts` | string | JSON 字符串，例如 `[{"data":"WhatsApp +9665..."},{"data":"Dad phone"}]` |
+
+---
+
+## 时区修改
+
+```
+POST /international/api/parent/updateTimeZone
+```
+
+表单字段：
+
+| 字段 | 说明 |
+|------|------|
+| `parentId` | 家长 ID |
+| `timeZone` | 例如 `GMT+03:00` |
+
+页面下拉框仅提供 `GMT-12:00` 到 `GMT+12:00` 的整点值。
+
+---
+
+## 补填推荐码
+
+```
+POST /international/api/parent/updateReferrerInfo
+```
+
+表单字段：
+
+| 字段 | 说明 |
+|------|------|
+| `parentId` | 家长 ID |
+| `referrerCode` | 推荐码 |
+
+前端额外做了一层校验：不能填写自己的邀请码。
+
+---
+
+## 家长解密
+
+```
+GET /international/api/parent/decrypt?id=<parentId>
+```
+
+主要返回：
+
+- `countryCode`
+- `phone`
+- `contactCountryCode`
+- `contactPhone`
+
+---
+
+## 家长是否下载 / 登录过 App
+
+```
+GET /international/uc/api/rpc/user/hasLogin?userId=<parentId>&deviceType=APP
+```
+
+常见 `deviceType`：
+
+- `APP`
+- 其他端值可按服务端支持传入
+
+返回通常含 `hasLogin`、`lastLoginDateTime` 等字段。
+
+---
+
+## 课耗进度
+
+```
+GET /manager/webhub/admin/api/admin/class/progress?parentId=<parentId>
+```
+
+主要返回：
+
+| 字段 | 说明 |
+|------|------|
+| `firstPaymentTime` | 首次付费时间 |
+| `sessionInventories` | 课时库存详情 |
+| `fixedConsumptions` | 固定课消包详情 |
+
+---
+
+## 固定课消明细
+
+```
+GET /international/api/minimumConsumption/schedule/detail/<id>?id=<id>
+```
+
+返回每个履约周期的：
+
+- `cycleStartTime`
+- `cycleEndTime`
+- `consumedQuantity`
+- `minimumConsumptionQuantity`
+
+---
+
+## 学习行为
+
+批量查家长下全部学生：
+
+```
+GET /manager/webhub/admin/api/class/schedule/batchLearningBehavior?parentId=<parentId>
+```
+
+单个学生：
+
+```
+GET /manager/webhub/admin/api/class/schedule/learningBehavior?studentId=<studentId>
+```
+
+典型字段：
+
+- `recentBookedStats`
+- `monthlyConsumption`
+- `monthlyCompletionDetail`
+- `lastCompletion`
+
+---
+
+## 跟进记录聚合
+
+家长详情页右侧跟进记录来自多路接口拼装：
+
+```bash
+# 学生列表（先拿 studentId）
+GET /international/api/parent/v2/getParentDetailWithChildById?id=<parentId>
+
+# 学生节点跟进
+GET /international/api/flow/getFlowRemarkList?studentId=<studentId>&type=0
+
+# 销售跟进
+GET /international/api/sale/tracking/list?parentId=<parentId>
+
+# 服务跟进
+GET /international/leads/api/v2/leads/follow/record/getList?userId=<parentId>
+
+# 智齿外呼记录
+POST /international/leads/api/v1/leads/sobot/callRecord/search/?userId=<parentId>
+```
+
+`vipkid-ops follow-records` 会把这些结果聚合后统一输出。
+
+---
+
+## 海报配置与复制次数
+
+海报配置：
+
+```
+GET /international/api/poster/config/getInfo
+```
+
+海报复制次数：
+
+```
+GET /international/api/busiclick/getTotal?action=posterCopy&parentId=<parentId>
+```
+
+> 页面中的“复制推荐语”和“复制海报到剪贴板”还依赖 CMS 配置、短链服务、二维码合成和浏览器剪贴板能力；CLI 当前只覆盖配置与计数查询。

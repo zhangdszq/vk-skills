@@ -1,8 +1,5 @@
 [
-  {
-    "staffName": "汤灿灿",
-    "staffId": "49016054|06174"
-  },
+  
   {
     "staffName": "Mohammad Qasem",
     "staffId": "600000391|45830"
@@ -124,10 +121,6 @@
     "staffId": "59909859|52521"
   },
   {
-    "staffName": "李晓宇",
-    "staffId": "49396738|72514"
-  },
-  {
     "staffName": "Sultan Sa'ad Aldin",
     "staffId": "59846012|18340"
   },
@@ -162,9 +155,5 @@
   {
     "staffName": "Rakan Alkhatib",
     "staffId": "600000062|32538"
-  },
-  {
-    "staffName": "胡乃嵩",
-    "staffId": "57798067|43485"
   }
 ]
