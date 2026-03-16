@@ -1,0 +1,89 @@
+{
+  "skill_name": "vipkid-ops",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看一下沙特站私池里最近 7 天进入节点、且今天会掉库的 leads。我要按注册时间倒序看第一页，重点关注归属 GCC 是 Alaa 的家长。先别直接操作后台，告诉我你会去哪个页面、用什么筛选项、对应什么接口参数。",
+      "expected_output": "应识别这是 `/leadsGCC/list` 私池 Leads 查询场景，明确页面路由、私池状态值、筛选项与查询接口参数映射，而不是只给一句模糊说明。",
+      "files": [],
+      "expectations": [
+        "回答明确提到 `/leadsGCC/list` 或 Leads 管理私池页，而不是泛泛地说后台 Leads 页面。",
+        "回答明确提到 Leads 列表与查询接口实际走 `sa-leads.lionabc.com`，而不是误写成 `sa-manager`。",
+        "回答提到私池查询接口 `POST /api/v1/leads/user/manage/getList`，并说明 `status=1`。",
+        "回答提到至少这些筛选参数中的三个：`flowNodeList`、`willFlowToday`、`staffId` 或 GCC 员工筛选、`sortByTime`。",
+        "回答提到“最近 7 天进入节点”对应节点生成时间筛选，应优先使用 `lastFlowTimeStart` / `lastFlowTimeEnd`。"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我这里有 3 个家长 ID：10001、10002、10003，想批量分给 GCC 员工 90088。你先帮我确认这步该怎么做，真正执行前要再次问我。顺便告诉我如果我要改成分给 TMK，要改哪个字段。",
+      "expected_output": "应识别为 Leads 批量分配场景，给出手动分配接口、关键字段和二次确认要求，不能直接假设已经得到最终授权执行。",
+      "files": [],
+      "expectations": [
+        "回答提到分配接口 `POST /api/v1/leads/user/manage/allot`。",
+        "回答明确列出 `userIdList`、`staffId`、`staffRole` 三个关键字段。",
+        "回答强调执行前必须二次确认，不应直接进入已执行语气。",
+        "回答说明 TMK 需要把 `staffRole` 改为 `3`。"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我给 parentId 556677 这个家长处理重置密码，我不想你乱猜接口。如果这件事实际上是打开别的后台页面做的，就直接告诉我入口地址和你准备怎么操作；但在我再次确认前不要真的点。",
+      "expected_output": "应识别为强副作用的行内操作，并说明它不是当前页直接调接口，而是通过嵌入页面 `/hobbit/user/resetPassword` 完成；同时明确需要二次确认。",
+      "files": [],
+      "expectations": [
+        "回答指出这是通过后台页面或 iframe 完成，而不是直接编造一个 reset password API。",
+        "回答提到路径 `/hobbit/user/resetPassword`。",
+        "回答提到关键参数里至少包含 `parentId`、`phone`、`email`、`isIframe=1` 中的两个。",
+        "回答明确表示这是强副作用操作，执行前必须再次确认。"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "顺便帮我查一下商品包 3537 的详情，再看看库存是不是限制状态。这个是老能力，别因为加了 Leads 就忘了。",
+      "expected_output": "应继续覆盖原有商品包能力，能区分这是商品包详情与库存查询的组合场景，并给出对应接口而不是误导到 Leads 模块。",
+      "files": [],
+      "expectations": [
+        "回答提到商品包详情接口 `GET /international/api/product/detail?productId=3537`。",
+        "回答提到库存接口 `GET /international/order-service/api/product/package/stock?packageId=3537`。",
+        "回答不会把这个请求错误路由到 Leads 接口或 Leads 页面。"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "查一下今天注册的用户有多少。你直接告诉我查哪个接口、该带哪些核心参数，不要只说去页面点一下。",
+      "expected_output": "应识别这是 Leads 列表查询统计场景，给出私池列表接口、注册时间开始结束字段与 `status=1` 的口径，而不是含糊地说看页面筛选。",
+      "files": [],
+      "expectations": [
+        "回答提到查询接口 `POST /api/v1/leads/user/manage/getList`。",
+        "回答提到注册时间应使用 `registerTimeStart` / `registerTimeEnd`，而不是只写一个模糊的 `registerTime`。",
+        "回答提到私池口径 `status=1`。",
+        "回答提到 Leads 列表接口走 `sa-leads.lionabc.com` 或说明需要使用 Leads 专用请求头。"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "帮我查询待付费和已付费节点 2月1号到今天的数据。我要的是列表查询接口口径，不是详情页。",
+      "expected_output": "应识别为 Leads 节点统计场景，给出列表接口、节点枚举值和节点生成时间字段，而不是只返回页面中文节点名。",
+      "files": [],
+      "expectations": [
+        "回答提到节点枚举值 `WAIT_PAY` 和 `PAID`。",
+        "回答提到节点生成时间应使用 `lastFlowTimeStart` / `lastFlowTimeEnd`。",
+        "回答提到这是列表接口 `POST /api/v1/leads/user/manage/getList` 的统计口径。",
+        "回答不会建议改走详情页查询。"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "这个查询列表接口都有哪些参数？哪些是我可以自定义输入的，哪些是固定枚举或者必须先查别的接口拿到的？",
+      "expected_output": "应把列表查询接口的关键参数按“自由输入 / 固定枚举 / 依赖其他接口返回值”分类说明，而不是只丢一个大 JSON。",
+      "files": [],
+      "expectations": [
+        "回答提到 `status` 属于固定枚举，且至少说明 `0/1/2` 的含义。",
+        "回答提到 `flowNodeList` 不是自由文本，而是来自节点接口的枚举值。",
+        "回答提到 `channelCode` 或 `channelLevelId` 不是自由文本，而是来自渠道接口返回值。",
+        "回答提到 `userId`、`studentId`、`mobile`、时间范围这类字段属于可自定义输入。"
+      ]
+    }
+  ]
+}
