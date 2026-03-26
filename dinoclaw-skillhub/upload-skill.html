@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上传 Skill — DinoClaw SkillHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&family=Noto+Sans+SC:wght@400;500;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFFCF7;--surface:#fff;--surface-2:#FAF6EE;--ink:#1C1917;--ink-2:#78716C;--ink-3:#C4BBB5;
+  --border:rgba(28,25,23,.08);--orange:#F0984F;--orange-d:#E07A2F;--orange-light:#FDECD6;--orange-glow:rgba(240,152,79,.18);
+  --green:#3AAF6E;--green-light:rgba(58,175,110,.12);--mw:1200px;--ease:cubic-bezier(.22,1,.36,1);
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:"DM Sans","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);
+  line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 820px 560px at 2% -5%,rgba(240,152,79,.08),transparent),
+    radial-gradient(ellipse 720px 480px at 100% 0%,rgba(58,175,110,.07),transparent),
+    radial-gradient(ellipse 540px 360px at 50% 100%,rgba(124,111,219,.05),transparent);
+}
+a{color:inherit;text-decoration:none}
+button,input,textarea{font:inherit}
+button{border:none;background:none;cursor:pointer}
+.wrap{width:min(100%,var(--mw));margin:0 auto;padding:0 36px}
+.serif{font-family:"Playfair Display","Noto Sans SC",serif}
+
+.nav-wrap{position:sticky;top:0;z-index:200;padding:12px 0 0}
+.nav-bar{
+  min-height:58px;display:flex;align-items:center;gap:12px;padding:0 8px 0 16px;
+  border-radius:20px;background:rgba(255,252,247,.88);border:1px solid var(--border);
+  box-shadow:0 3px 18px rgba(28,25,23,.05);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+.logo{display:inline-flex;align-items:center;gap:9px}
+.logo-mark{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--orange),#E08035);box-shadow:0 5px 14px var(--orange-glow);
+}
+.logo-mark span{font-size:14px;font-weight:800;color:#fff}
+.logo-text{font-size:14px;font-weight:700}
+.logo-sub{font-size:10px;font-weight:600;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;margin-left:2px}
+.nav-links{display:flex;gap:6px;margin-left:auto}
+.nav-links a{
+  padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--ink-2);
+  transition:background .18s,color .18s;
+}
+.nav-links a:hover,.nav-links a.active{background:rgba(28,25,23,.04);color:var(--ink)}
+
+.page{
+  padding:34px 0 64px;
+}
+.page-head{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:22px;align-items:start;
+  margin-bottom:28px;
+}
+.crumb{
+  font-size:13px;color:var(--ink-2);margin-bottom:10px;
+}
+.crumb a{color:var(--orange-d);font-weight:700}
+.page-head h1{
+  font-size:clamp(34px,6vw,58px);line-height:.95;letter-spacing:-.04em;margin-bottom:14px;
+  white-space:nowrap;
+}
+.page-sub{
+  max-width:640px;font-size:16px;color:var(--ink-2);
+}
+.head-side{
+  padding:18px 18px 16px;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(255,248,239,.95));
+  border:1px solid rgba(28,25,23,.08);box-shadow:0 10px 28px rgba(28,25,23,.06);
+  width:100%;
+}
+.head-side-label{
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px;
+}
+.head-side p{font-size:13px;color:var(--ink-2)}
+.head-side strong{color:var(--ink)}
+
+.upload-layout{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:22px;align-items:start;
+}
+.panel{
+  background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:26px;
+  box-shadow:0 10px 30px rgba(28,25,23,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.form-panel{padding:32px}
+.sidebar{display:flex;flex-direction:column;gap:16px;position:sticky;top:84px}
+.section-title{
+  font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:16px;
+}
+.field-grid{display:grid;gap:24px}
+.field label{
+  display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;
+}
+.field-help{font-size:12px;color:var(--ink-3);margin-top:8px}
+.input,.textarea{
+  width:100%;border:1.5px solid var(--border);background:rgba(250,246,238,.72);color:var(--ink);
+  border-radius:16px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s;
+}
+.input{
+  height:52px;padding:0 16px;font-size:15px;font-weight:500;
+}
+.textarea{
+  min-height:150px;padding:14px 16px;font-size:15px;resize:vertical;
+}
+.input:focus,.textarea:focus{
+  border-color:var(--orange);box-shadow:0 0 0 4px var(--orange-glow);background:#fff;
+}
+
+.uploader{
+  position:relative;display:grid;gap:18px;padding:24px;border-radius:24px;
+  border:1.5px dashed rgba(240,152,79,.35);background:linear-gradient(180deg,rgba(253,236,214,.58),rgba(255,255,255,.75));
+}
+.uploader-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.uploader-copy h3{font-size:20px;line-height:1.05;letter-spacing:-.03em;margin-bottom:10px}
+.uploader-copy p{font-size:14px;color:var(--ink-2);max-width:560px;line-height:1.75}
+.upload-badge{
+  display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;
+  background:#fff;color:var(--orange-d);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  box-shadow:0 4px 14px rgba(240,152,79,.12);
+}
+.upload-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--orange)}
+.uploader-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:2px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:44px;padding:0 18px;border-radius:13px;font-size:14px;font-weight:800;
+  transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .22s var(--ease);
+}
+.btn:hover{transform:translateY(-1px)}
+.btn svg{width:15px;height:15px;flex-shrink:0}
+.btn-fill{color:#fff;background:linear-gradient(135deg,var(--orange),var(--orange-d));box-shadow:0 8px 24px var(--orange-glow)}
+.btn-fill:hover{box-shadow:0 12px 30px rgba(240,152,79,.26)}
+.btn-ghost{background:#fff;border:1.5px solid var(--border);color:var(--ink)}
+.btn-ghost:hover{border-color:rgba(240,152,79,.35)}
+
+.file-input{position:absolute;inset:0;opacity:0;pointer-events:none}
+.selection-meta{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+}
+.meta-card{
+  padding:18px 16px 14px;border-radius:20px;background:rgba(255,255,255,.84);border:1px solid rgba(28,25,23,.07);
+}
+.meta-card strong{display:block;font-size:19px;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.meta-card span{display:block;font-size:11px;color:var(--ink-3);margin-top:4px}
+.file-list{
+  display:grid;gap:10px;max-height:240px;overflow:auto;padding-right:2px;
+}
+.file-item{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.82);border:1px solid rgba(28,25,23,.07);
+}
+.file-item-name{font-size:13px;font-weight:600;color:var(--ink);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-item-kind{font-size:11px;color:var(--ink-3);flex-shrink:0}
+.empty-note{
+  padding:22px 18px;border-radius:18px;background:rgba(255,255,255,.78);border:1px dashed rgba(28,25,23,.08);
+  font-size:13px;color:var(--ink-2);line-height:1.8;
+}
+
+.side-card{padding:20px;border-radius:24px}
+.creator-card{
+  display:flex;align-items:center;gap:14px;margin-top:6px;padding:16px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(250,246,238,.9),rgba(255,255,255,.92));border:1px solid rgba(28,25,23,.07);
+}
+.creator-avatar{
+  width:50px;height:50px;border-radius:16px;display:grid;place-items:center;flex-shrink:0;
+  color:#fff;font-size:19px;font-weight:800;box-shadow:0 8px 18px rgba(28,25,23,.12);
+}
+.creator-meta{min-width:0}
+.creator-name{font-size:17px;font-weight:800;line-height:1.1}
+.creator-role{font-size:12px;color:var(--ink-2);margin-top:3px}
+.creator-extra{font-size:12px;color:var(--ink-3);margin-top:6px}
+.side-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.helper-list{display:grid;gap:10px}
+.helper-item{
+  padding:14px 14px 12px;border-radius:18px;background:rgba(250,246,238,.78);border:1px solid rgba(28,25,23,.06);
+}
+.helper-item strong{display:block;font-size:13px;color:var(--ink);margin-bottom:4px}
+.helper-item p{font-size:12px;color:var(--ink-2)}
+
+.submit-bar{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:38px;padding-top:28px;border-top:1px solid var(--border);
+}
+.submit-note{font-size:13px;color:var(--ink-3);max-width:540px;line-height:1.75}
+
+#toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(60px);
+  padding:12px 20px;border-radius:12px;background:var(--ink);color:#fff;font-size:14px;font-weight:700;
+  box-shadow:0 10px 28px rgba(28,25,23,.2);opacity:0;pointer-events:none;z-index:999;
+  transition:transform .28s var(--ease),opacity .28s var(--ease);white-space:nowrap;
+}
+
+@media(max-width:980px){
+  .page-head,.upload-layout{grid-template-columns:1fr}
+  .sidebar{position:static;top:auto}
+}
+@media(max-width:768px){
+  .wrap{padding:0 18px}
+  .selection-meta{grid-template-columns:1fr}
+  .nav-links{display:none}
+  .form-panel{padding:22px}
+  .side-card{padding:18px}
+  .page{padding-top:26px}
+  .uploader{padding:18px}
+  .page-head h1{white-space:normal}
+}
+</style>
+</head>
+<body>
+<div class="nav-wrap">
+  <nav class="wrap">
+    <div class="nav-bar">
+      <a href="skillhub.html" class="logo">
+        <div class="logo-mark"><span>D</span></div>
+        <div>
+          <span class="logo-text">DinoClaw</span>
+          <span class="logo-sub">SkillHub</span>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="skillhub.html">首页</a>
+        <a href="skills-browse.html">浏览技能</a>
+        <a href="upload-skill.html" class="active">上传 Skill</a>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<main class="wrap page">
+  <header class="page-head">
+    <div>
+      <p class="crumb"><a href="skillhub.html">SkillHub</a> / <span>上传 Skill</span></p>
+      <h1 class="serif">把你的 Skill 带进生态里</h1>
+      <p class="page-sub">填写标题与描述，选择本地技能文件夹，系统会自动读取当前登录人作为创建者。你可以先上传一个包含 `SKILL.md` 的目录，页面会即时预览文件结构。</p>
+    </div>
+    <div class="head-side">
+      <div class="head-side-label">发布前检查</div>
+      <p><strong>建议目录内包含：</strong>`SKILL.md`、说明文档、示例素材或脚本。上传页当前为静态原型，会先完成资料登记与目录校验。</p>
+    </div>
+  </header>
+
+  <div class="upload-layout">
+    <section class="panel form-panel">
+      <div class="section-title">Skill 信息</div>
+      <form id="uploadForm">
+        <div class="field-grid">
+          <div class="field">
+            <label for="skillTitle">Skill 标题</label>
+            <input id="skillTitle" name="skillTitle" class="input" type="text" placeholder="例如：Leads 质检助手">
+            <p class="field-help">标题会作为技能名称展示在 SkillHub 卡片和详情页中。</p>
+          </div>
+
+          <div class="field">
+            <label for="skillDesc">Skill 描述</label>
+            <textarea id="skillDesc" name="skillDesc" class="textarea" placeholder="用 1-3 句话说明这个 Skill 解决什么问题、适合谁用、能带来什么结果。"></textarea>
+            <p class="field-help">建议写清使用对象、典型场景和最核心的输出结果。</p>
+          </div>
+
+          <div class="uploader">
+            <input id="folderInput" class="file-input" type="file" webkitdirectory directory multiple>
+            <div class="uploader-top">
+              <div class="uploader-copy">
+                <div class="upload-badge">文件夹上传</div>
+                <h3>选择本地 Skill 文件夹</h3>
+                <p>支持上传整个目录。页面会识别根目录名称、文件总数，以及是否检测到 `SKILL.md`。</p>
+              </div>
+            </div>
+
+            <div class="uploader-actions">
+              <button type="button" class="btn btn-fill" id="chooseFolderBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                选择文件夹
+              </button>
+              <button type="button" class="btn btn-ghost" id="clearFolderBtn">清空当前选择</button>
+            </div>
+
+            <div class="selection-meta">
+              <div class="meta-card">
+                <strong id="folderName">未选择</strong>
+                <span>目录名称</span>
+              </div>
+              <div class="meta-card">
+                <strong id="fileCount">0</strong>
+                <span>文件数量</span>
+              </div>
+              <div class="meta-card">
+                <strong id="skillMdState">未检测</strong>
+                <span>`SKILL.md` 检查</span>
+              </div>
+            </div>
+
+            <div id="filePreview" class="empty-note">还没有选择文件夹。选择后，这里会显示目录中的部分文件预览。</div>
+          </div>
+        </div>
+
+        <div class="submit-bar">
+          <p class="submit-note">提交后会生成一份上传登记信息，当前原型版本不会真正写入服务器，但会校验必填项并展示待发布摘要。</p>
+          <button type="submit" class="btn btn-fill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            提交上传登记
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel side-card">
+        <div class="section-title">创建者</div>
+        <div class="creator-card">
+          <div class="creator-avatar" id="creatorAvatar">钉</div>
+          <div class="creator-meta">
+            <div class="creator-name" id="creatorName">未登录</div>
+            <div class="creator-role" id="creatorRole">请先登录后再上传</div>
+            <div class="creator-extra" id="creatorExtra">当前将从登录态自动带出创建者资料。</div>
+          </div>
+        </div>
+        <div class="side-actions">
+          <a class="btn btn-fill" href="login.html" id="loginAction">去登录</a>
+          <button type="button" class="btn btn-ghost" id="useDemoUserBtn">填入演示用户</button>
+        </div>
+      </section>
+
+      <section class="panel side-card">
+        <div class="section-title">上传建议</div>
+        <div class="helper-list">
+          <div class="helper-item">
+            <strong>标题别太泛</strong>
+            <p>比起“分析工具”，更建议用“Leads 质检助手”这种能看出场景的标题。</p>
+          </div>
+          <div class="helper-item">
+            <strong>描述写结果</strong>
+            <p>描述里尽量说明输入、处理方式和输出结果，方便别人判断是否适合自己。</p>
+          </div>
+          <div class="helper-item">
+            <strong>优先带上 `SKILL.md`</strong>
+            <p>系统会优先检查技能说明文件；后续对接真实上架流程时，也会从这里提取元信息。</p>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="skillhub-user.js"></script>
+<script>
+(function () {
+  var toastTimer;
+  var selectedFiles = [];
+
+  function showToast(message) {
+    var el = document.getElementById("toast");
+    el.textContent = message;
+    el.style.opacity = "1";
+    el.style.transform = "translateX(-50%) translateY(0)";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.style.opacity = "0";
+      el.style.transform = "translateX(-50%) translateY(60px)";
+    }, 2500);
+  }
+
+  function getCurrentUser() {
+    return window.SKILLHUB_USER && window.SKILLHUB_USER.getCurrentUser
+      ? window.SKILLHUB_USER.getCurrentUser()
+      : null;
+  }
+
+  function renderUserCard() {
+    var user = getCurrentUser();
+    var avatar = document.getElementById("creatorAvatar");
+    var name = document.getElementById("creatorName");
+    var role = document.getElementById("creatorRole");
+    var extra = document.getElementById("creatorExtra");
+    var loginAction = document.getElementById("loginAction");
+
+    if (user) {
+      avatar.textContent = user.avatarText || user.displayName.charAt(0);
+      avatar.style.background = user.creatorColor;
+      name.textContent = user.displayName;
+      role.textContent = user.role || "Skill 创作者";
+      extra.textContent = user.dept
+        ? "登录来源：" + (user.source || "dingtalk") + " · " + user.dept
+        : "登录来源：" + (user.source || "dingtalk") + " · 创建者将自动带出";
+      loginAction.textContent = "切换账号";
+      loginAction.href = "login.html";
+      return;
+    }
+
+    avatar.textContent = "未";
+    avatar.style.background = "linear-gradient(135deg,#A8A29E,#78716C)";
+    name.textContent = "未登录";
+    role.textContent = "请先登录后再上传";
+    extra.textContent = "当前将从登录态自动带出创建者资料。";
+    loginAction.textContent = "去登录";
+    loginAction.href = "login.html";
+  }
+
+  function getFolderName(files) {
+    if (!files.length) return "未选择";
+    var first = files[0].webkitRelativePath || files[0].name;
+    return first.split("/")[0] || "未选择";
+  }
+
+  function hasSkillMd(files) {
+    return files.some(function (file) {
+      return /(^|\/)SKILL\.md$/i.test(file.webkitRelativePath || file.name);
+    });
+  }
+
+  function getFileKind(filename) {
+    var parts = String(filename).split(".");
+    if (parts.length < 2) return "文件";
+    return parts.pop().toUpperCase();
+  }
+
+  function renderFiles(files) {
+    var preview = document.getElementById("filePreview");
+    if (!files.length) {
+      preview.className = "empty-note";
+      preview.textContent = "还没有选择文件夹。选择后，这里会显示目录中的部分文件预览。";
+      return;
+    }
+
+    var items = files.slice(0, 8).map(function (file) {
+      var relative = file.webkitRelativePath || file.name;
+      return '<div class="file-item">' +
+        '<div class="file-item-name">' + escapeHtml(relative) + '</div>' +
+        '<div class="file-item-kind">' + escapeHtml(getFileKind(file.name)) + '</div>' +
+      '</div>';
+    }).join("");
+
+    if (files.length > 8) {
+      items += '<div class="empty-note">还有 ' + (files.length - 8) + ' 个文件未展开显示。</div>';
+    }
+
+    preview.className = "file-list";
+    preview.innerHTML = items;
+  }
+
+  function updateSelection(files) {
+    selectedFiles = Array.prototype.slice.call(files || []);
+    document.getElementById("folderName").textContent = getFolderName(selectedFiles);
+    document.getElementById("fileCount").textContent = String(selectedFiles.length);
+    document.getElementById("skillMdState").textContent = selectedFiles.length
+      ? (hasSkillMd(selectedFiles) ? "已检测到" : "缺少")
+      : "未检测";
+    renderFiles(selectedFiles);
+  }
+
+  function clearSelection() {
+    document.getElementById("folderInput").value = "";
+    updateSelection([]);
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (char) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char];
+    });
+  }
+
+  document.getElementById("chooseFolderBtn").addEventListener("click", function () {
+    document.getElementById("folderInput").click();
+  });
+
+  document.getElementById("clearFolderBtn").addEventListener("click", clearSelection);
+
+  document.getElementById("folderInput").addEventListener("change", function (event) {
+    updateSelection(event.target.files);
+  });
+
+  document.getElementById("useDemoUserBtn").addEventListener("click", function () {
+    var user = window.SKILLHUB_USER.saveCurrentUser({
+      id: "demo-uploader",
+      displayName: "Baoyu",
+      role: "Skill 创作者",
+      source: "demo",
+      dept: "DinoAI"
+    });
+    renderUserCard();
+    showToast("已填入演示创建者：" + user.displayName);
+  });
+
+  document.getElementById("uploadForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    var title = document.getElementById("skillTitle").value.trim();
+    var desc = document.getElementById("skillDesc").value.trim();
+    var user = getCurrentUser();
+
+    if (!user) {
+      showToast("请先登录，系统需要自动带出创建者信息。");
+      return;
+    }
+    if (!title) {
+      showToast("请先填写 Skill 标题。");
+      document.getElementById("skillTitle").focus();
+      return;
+    }
+    if (!desc) {
+      showToast("请先填写 Skill 描述。");
+      document.getElementById("skillDesc").focus();
+      return;
+    }
+    if (!selectedFiles.length) {
+      showToast("请先选择要上传的 Skill 文件夹。");
+      return;
+    }
+
+    var summary = [
+      "标题：" + title,
+      "创建者：" + user.displayName,
+      "目录：" + getFolderName(selectedFiles),
+      "文件数：" + selectedFiles.length
+    ].join(" | ");
+
+    showToast("上传登记已生成");
+    window.setTimeout(function () {
+      window.alert("当前为静态原型，已完成资料校验：\n\n" + summary);
+    }, 80);
+  });
+
+  renderUserCard();
+})();
+</script>
+</body>
+</html>

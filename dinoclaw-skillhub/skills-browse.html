@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>浏览技能 — DinoClaw SkillHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Noto+Sans+SC:wght@400;500;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFFCF7;--surface:#fff;--surf-alt:#FAF6EE;--ink:#1C1917;--ink-2:#78716C;--ink-3:#C4BBB5;
+  --border:rgba(28,25,23,.08);--orange:#F0984F;--orange-d:#E07A2F;--orange-light:#FDECD6;--orange-glow:rgba(240,152,79,.18);
+  --cyan:#2EB8D9;--cyan-light:rgba(46,184,217,.12);--ease:cubic-bezier(.22,1,.36,1);--mw:1200px;--radius-card:22px;
+}
+html{scroll-behavior:smooth}
+body{font-family:"DM Sans","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.wrap{width:min(100%,var(--mw));margin:0 auto;padding:0 36px}
+.serif{font-family:"Playfair Display","Noto Sans SC",serif}
+
+.nav-wrap{position:sticky;top:0;z-index:200;padding:12px 0 0}
+.nav-bar{display:flex;align-items:center;gap:12px;min-height:58px;padding:0 8px 0 16px;border-radius:20px;background:rgba(255,252,247,.88);border:1px solid var(--border);box-shadow:0 3px 18px rgba(28,25,23,.05);backdrop-filter:blur(18px)}
+.logo{display:inline-flex;align-items:center;gap:9px}
+.logo-mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--orange),#E08035);box-shadow:0 5px 14px var(--orange-glow)}
+.logo-mark span{font-size:14px;font-weight:800;color:#fff}
+.logo-text{font-size:14px;font-weight:700}
+.logo-sub{font-size:10px;font-weight:600;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;margin-left:2px}
+.nav-back{margin-left:auto;font-size:13px;font-weight:600;color:var(--ink-2);padding:8px 14px;border-radius:10px;transition:background .2s}
+.nav-back:hover{color:var(--ink);background:rgba(28,25,23,.04)}
+
+/* Sidebar + main layout */
+/* Title row full width; toolbar full width; then sidebar | cards align at top */
+.browse-page{padding-bottom:56px}
+.page-head{padding:20px 0 16px}
+.page-head h1{margin-bottom:0}
+.page-head-bar{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;
+  margin-top:14px;
+}
+.browse-layout{
+  display:grid;grid-template-columns:minmax(200px,232px) minmax(0,1fr);
+  gap:28px 32px;align-items:start;
+}
+.browse-left-col{display:flex;flex-direction:column;gap:12px;position:sticky;top:84px;align-self:start}
+.browse-sidebar{
+  padding:18px 16px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 2px 12px rgba(28,25,23,.04);
+}
+.sort-panel{
+  position:relative;padding:14px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 2px 12px rgba(28,25,23,.04);
+}
+.sort-label{
+  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:10px;padding-left:2px;
+}
+.sort-trigger{
+  width:100%;min-height:44px;padding:0 14px 0 12px;border-radius:12px;
+  border:1.5px solid var(--border);background:var(--surface);
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;font-weight:600;color:var(--ink);text-align:left;
+  transition:border-color .18s,box-shadow .18s,background .18s;
+}
+.sort-trigger:hover{border-color:rgba(240,152,79,.34);background:#fffefd}
+.sort-trigger.open{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px var(--orange-glow);
+}
+.sort-trigger-icon{width:15px;height:15px;color:var(--ink-3);flex-shrink:0}
+.sort-trigger-label{flex:1;min-width:0}
+.sort-trigger-chevron{
+  width:14px;height:14px;color:var(--ink-3);flex-shrink:0;
+  transition:transform .18s var(--ease),color .18s;
+}
+.sort-trigger.open .sort-trigger-chevron{transform:rotate(180deg);color:var(--orange-d)}
+.sort-menu{
+  position:absolute;top:calc(100% - 6px);left:14px;right:14px;z-index:50;
+  padding:8px;border-radius:16px;background:rgba(255,252,247,.98);
+  border:1px solid rgba(28,25,23,.08);
+  box-shadow:0 18px 38px rgba(28,25,23,.12),0 4px 14px rgba(28,25,23,.06);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  display:none;
+}
+.sort-menu.open{display:block;animation:sortMenuIn .18s var(--ease)}
+.sort-option{
+  width:100%;padding:11px 12px;border-radius:11px;border:none;background:transparent;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-size:13px;font-weight:600;color:var(--ink);text-align:left;
+  transition:background .15s,color .15s,transform .15s;
+}
+.sort-option:hover{background:rgba(28,25,23,.05)}
+.sort-option.active{background:var(--orange-light);color:var(--orange-d)}
+.sort-option-check{width:14px;height:14px;opacity:0;transform:scale(.8);transition:opacity .15s,transform .15s}
+.sort-option.active .sort-option-check{opacity:1;transform:scale(1)}
+@keyframes sortMenuIn{
+  from{opacity:0;transform:translateY(-6px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.sidebar-title{
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+  margin-bottom:14px;padding-left:2px;
+}
+.dept-nav{display:flex;flex-direction:column;gap:3px;max-height:min(70vh,calc(100vh - 200px));overflow-y:auto}
+.dept-nav::-webkit-scrollbar{width:5px}
+.dept-nav::-webkit-scrollbar-thumb{background:rgba(168,162,158,.4);border-radius:99px}
+.dept-item{
+  display:flex;align-items:center;width:100%;padding:10px 11px;border-radius:11px;
+  font-size:13px;font-weight:500;color:var(--ink-2);text-align:left;
+  background:transparent;border:none;cursor:pointer;transition:background .15s,color .15s;
+}
+.dept-item:hover{background:rgba(28,25,23,.05);color:var(--ink)}
+.dept-item.active{background:var(--orange-light);color:var(--orange-d);font-weight:600}
+.browse-cards-col{min-width:0}
+
+.page-head h1{font-size:clamp(26px,4vw,40px);letter-spacing:-.03em}
+.page-head .crumb{font-size:14px;color:var(--ink-2);margin-bottom:8px}
+.page-head .crumb a{color:var(--orange-d);font-weight:600}
+.result-count{font-size:13px;color:var(--ink-3)}
+.view-toggle{display:inline-flex;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);overflow:hidden}
+.view-toggle button{
+  display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;font-weight:600;color:var(--ink-2);
+  border-right:1px solid var(--border);transition:background .15s,color .15s;
+}
+.view-toggle button:last-child{border-right:none}
+.view-toggle button.active{background:var(--orange-light);color:var(--orange-d)}
+.view-toggle svg{width:16px;height:16px}
+
+.skills-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+}
+.skill-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);
+  box-shadow:0 2px 8px rgba(28,25,23,.04);transition:transform .25s var(--ease),box-shadow .25s;
+  cursor:pointer;overflow:hidden;display:flex;flex-direction:column;
+}
+.skill-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(28,25,23,.1);border-color:rgba(240,152,79,.2)}
+.skill-card-top{padding:22px 22px 16px;display:flex;align-items:flex-start;gap:14px}
+.skill-icon{width:52px;height:52px;border-radius:16px;flex-shrink:0;display:grid;place-items:center;box-shadow:0 4px 12px rgba(28,25,23,.08)}
+.skill-meta{flex:1;min-width:0}
+.skill-name{font-size:16px;font-weight:700;line-height:1.2;margin-bottom:5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.version-badge{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;background:var(--cyan-light);color:var(--cyan)}
+.skill-desc{font-size:13px;color:var(--ink-2);line-height:1.5;margin-bottom:10px}
+.skill-tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{display:inline-flex;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;background:var(--surf-alt);border:1px solid var(--border);color:var(--ink-3)}
+.skill-card-body{padding:0 22px 16px;margin-top:auto}
+.skill-creator{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--border)}
+.creator-avatar{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+.creator-info{flex:1}
+.creator-name{font-size:12px;font-weight:600}
+.creator-role{font-size:11px;color:var(--ink-3)}
+.skill-card-footer{display:flex;align-items:center;gap:8px;padding:12px 22px 16px;border-top:1px solid var(--border)}
+.stat-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--ink-3)}
+.stat-chip svg{width:13px;height:13px}
+.btn-sm{min-height:34px;padding:0 14px;border-radius:10px;font-size:12px;font-weight:700}
+.btn-fill{color:#fff;background:linear-gradient(135deg,var(--orange),var(--orange-d));box-shadow:0 4px 12px var(--orange-glow)}
+.ico-svg{display:block}
+
+/* List view */
+.skills-list{display:none;flex-direction:column;gap:10px}
+.skills-list.active{display:flex}
+.skills-grid-wrap.hidden{display:none}
+.skill-row{
+  display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:16px;background:var(--surface);
+  border:1px solid var(--border);box-shadow:0 2px 6px rgba(28,25,23,.03);transition:transform .2s,box-shadow .2s;
+}
+.skill-row:hover{transform:translateX(4px);box-shadow:0 6px 20px rgba(28,25,23,.07)}
+.skill-row-icon{width:48px;height:48px;border-radius:14px;flex-shrink:0;display:grid;place-items:center}
+.skill-row-main{flex:1;min-width:0}
+.skill-row-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.skill-row-desc{font-size:13px;color:var(--ink-2);line-height:1.45;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.skill-row-meta{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.empty{padding:56px 24px;text-align:center;border-radius:var(--radius-card);border:1px dashed var(--border);color:var(--ink-2);font-size:14px}
+
+/* Detail modal (aligned with homepage interaction) */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:44px;padding:0 18px;border-radius:12px;
+  font-size:13px;font-weight:700;border:none;cursor:pointer;
+}
+.btn-ghost{color:var(--ink);background:var(--surface);border:1.5px solid var(--border);box-shadow:0 2px 8px rgba(28,25,23,.05)}
+.btn-ghost:hover{border-color:var(--ink-3)}
+
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(28,25,23,.4);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  width:100%;max-width:760px;max-height:90vh;
+  border-radius:28px;background:var(--surface);
+  border:1px solid var(--border);
+  box-shadow:0 24px 60px rgba(28,25,23,.2);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.modal-header{
+  display:flex;align-items:flex-start;gap:16px;
+  padding:28px 28px 20px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.modal-icon{
+  width:60px;height:60px;border-radius:18px;flex-shrink:0;
+  display:grid;place-items:center;
+  box-shadow:0 6px 18px rgba(28,25,23,.1);
+}
+.modal-title-wrap{flex:1}
+.modal-name{font-size:22px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.modal-creator-line{font-size:13px;color:var(--ink-2)}
+.modal-creator-line a{color:var(--orange);font-weight:600}
+.modal-close{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:var(--surf-alt);border:1px solid var(--border);
+  display:grid;place-items:center;cursor:pointer;transition:background .2s;
+}
+.modal-close:hover{background:#fff2e4}
+.modal-close svg{width:16px;height:16px}
+.modal-body{overflow-y:auto;flex:1;padding:24px 28px}
+.modal-tabs{display:flex;gap:4px;margin-bottom:24px}
+.modal-tab{
+  padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;
+  border:1.5px solid transparent;color:var(--ink-2);cursor:pointer;transition:all .2s;
+}
+.modal-tab.active{border-color:var(--orange);color:var(--orange-d);background:var(--orange-light)}
+.modal-tab:hover:not(.active){background:var(--surf-alt)}
+.modal-panel{display:none}
+.modal-panel.active{display:block}
+.modal-video{
+  width:100%;aspect-ratio:16/9;border-radius:16px;
+  background:linear-gradient(135deg,#12151C,#1e2430);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px;cursor:pointer;overflow:hidden;position:relative;
+}
+.play-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(255,255,255,.92);
+  display:grid;place-items:center;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
+.play-btn svg{width:20px;height:20px;margin-left:3px}
+.modal-video-label{
+  position:absolute;bottom:12px;left:12px;
+  padding:4px 10px;border-radius:7px;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-size:11px;font-weight:600;backdrop-filter:blur(6px);
+}
+.modal-desc{font-size:14px;color:var(--ink-2);line-height:1.65;margin-bottom:20px}
+.modal-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+.modal-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+.modal-stat{
+  padding:14px 12px;border-radius:14px;
+  background:var(--surf-alt);border:1px solid var(--border);text-align:center;
+}
+.modal-stat strong{display:block;font-size:20px;font-weight:800;letter-spacing:-.03em}
+.modal-stat span{display:block;font-size:11px;color:var(--ink-3);margin-top:2px}
+.version-list{display:flex;flex-direction:column;gap:10px}
+.version-item{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px 16px;border-radius:14px;
+  background:var(--surf-alt);border:1px solid var(--border);
+}
+.v-badge{
+  display:inline-flex;padding:3px 8px;border-radius:6px;
+  font-size:11px;font-weight:700;
+  background:var(--cyan-light);color:var(--cyan);flex-shrink:0;
+  font-family:monospace;
+}
+.v-date{font-size:11px;color:var(--ink-3);margin-bottom:4px}
+.v-notes{font-size:13px;color:var(--ink-2);line-height:1.5}
+.comment-form{margin-bottom:20px}
+.comment-input{
+  width:100%;padding:12px 16px;border-radius:12px;
+  border:1.5px solid var(--border);background:var(--surf-alt);
+  font-size:13px;font-family:inherit;color:var(--ink);outline:none;resize:none;
+  min-height:72px;margin-bottom:10px;
+}
+.comment-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-glow)}
+.comment-list{display:flex;flex-direction:column;gap:14px}
+.comment-item{display:flex;gap:12px}
+.comment-av{
+  width:32px;height:32px;border-radius:10px;flex-shrink:0;
+  display:grid;place-items:center;font-size:15px;font-weight:700;color:#fff;
+}
+.comment-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.comment-name{font-size:13px;font-weight:600}
+.comment-time{font-size:11px;color:var(--ink-3)}
+.comment-text{font-size:13px;color:var(--ink-2);line-height:1.55}
+.comment-like{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;color:var(--ink-3);cursor:pointer;margin-top:6px;
+}
+.comment-like:hover{color:var(--orange)}
+.comment-like svg{width:12px;height:12px}
+.modal-footer{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 28px 24px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.like-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:10px 18px;border-radius:11px;
+  border:1.5px solid var(--border);background:var(--surf-alt);
+  font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;
+}
+.like-btn:hover,.like-btn.liked{
+  border-color:var(--orange);background:var(--orange-light);color:var(--orange-d);
+}
+.like-btn svg{width:15px;height:15px}
+
+@media(max-width:1100px){.skills-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){
+  .browse-layout{grid-template-columns:1fr;gap:20px}
+  .browse-left-col{gap:10px;position:static;top:auto}
+  .browse-sidebar{max-height:none;padding:14px 14px}
+  .dept-nav{flex-direction:row;flex-wrap:wrap;gap:8px;max-height:none;overflow:visible}
+  .dept-item{width:auto;padding:8px 12px}
+}
+@media(max-width:768px){
+  .wrap{padding:0 18px}
+  .skills-grid{grid-template-columns:1fr}
+  .skill-row{flex-wrap:wrap}
+  .skill-row-meta{width:100%}
+  .modal-header,.modal-body,.modal-footer{padding-left:18px;padding-right:18px}
+  .modal-stats-row{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="nav-wrap">
+<nav class="wrap">
+  <div class="nav-bar">
+    <a href="skillhub.html" class="logo">
+      <div class="logo-mark"><span>D</span></div>
+      <div>
+        <span class="logo-text">DinoClaw</span>
+        <span class="logo-sub">SkillHub</span>
+      </div>
+    </a>
+    <a class="nav-back" href="skillhub.html">← 返回首页</a>
+  </div>
+</nav>
+</div>
+
+<main class="wrap browse-page">
+  <header class="page-head">
+    <p class="crumb"><a href="skillhub.html">SkillHub</a> / <span id="crumbDept">全部技能</span></p>
+    <h1 class="serif" id="pageTitle">浏览全部技能</h1>
+    <div class="page-head-bar">
+      <p class="result-count" id="resultCount">共 0 个技能</p>
+      <div class="view-toggle" role="group" aria-label="视图切换">
+        <button type="button" class="active" id="btnViewGrid" onclick="setViewMode('grid')" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          卡片
+        </button>
+        <button type="button" id="btnViewList" onclick="setViewMode('list')" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          列表
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="browse-layout">
+    <div class="browse-left-col">
+      <div class="sort-panel" aria-label="排序方式">
+        <div class="sort-label">排序方式</div>
+        <button
+          type="button"
+          class="sort-trigger"
+          id="sortTrigger"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="sortMenu"
+          onclick="toggleSortMenu()"
+        >
+          <svg class="sort-trigger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h10M8 12h7M8 18h4"/><path d="M4 6v12"/><path d="m2 8 2-2 2 2"/></svg>
+          <span class="sort-trigger-label" id="sortTriggerLabel">使用次数</span>
+          <svg class="sort-trigger-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="sort-menu" id="sortMenu" role="menu" aria-labelledby="sortTrigger"></div>
+      </div>
+
+      <aside class="browse-sidebar" aria-label="部门分类">
+        <div class="sidebar-title">部门分类</div>
+        <nav class="dept-nav" id="deptNav"></nav>
+      </aside>
+    </div>
+
+    <div class="browse-cards-col">
+      <div class="skills-grid-wrap" id="gridWrap">
+        <div class="skills-grid" id="skillsGrid"></div>
+      </div>
+      <div class="skills-list" id="skillsList"></div>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-icon" id="mIcon"></div>
+      <div class="modal-title-wrap">
+        <div class="modal-name" id="mName">
+          技能名称
+          <span class="version-badge" id="mVersion">v1.0.0</span>
+        </div>
+        <div class="modal-creator-line">由 <a href="#" id="mCreator">创作者</a> 创作 · <span id="mContribs">2 位贡献者</span></div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <div class="modal-tab active" onclick="switchTab(this,'overview')">概览</div>
+        <div class="modal-tab" onclick="switchTab(this,'versions')">版本历史</div>
+        <div class="modal-tab" onclick="switchTab(this,'comments')">评论 <span id="mCommentCount" style="font-size:11px;color:var(--ink-3)">(3)</span></div>
+      </div>
+
+      <div class="modal-panel active" id="panel-overview">
+        <div class="modal-video" onclick="showToast('播放技能介绍视频…')">
+          <div class="play-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div class="modal-video-label" id="mVideoLabel">技能介绍 · 2:34</div>
+        </div>
+        <p class="modal-desc" id="mDesc">这里是技能详细描述。</p>
+        <div class="modal-tags" id="mTags"></div>
+        <div class="modal-stats-row">
+          <div class="modal-stat"><strong id="mUses">0</strong><span>使用次数</span></div>
+          <div class="modal-stat"><strong id="mLikeCount">0</strong><span>点赞</span></div>
+          <div class="modal-stat"><strong id="mContribCount">0</strong><span>贡献者</span></div>
+          <div class="modal-stat"><strong id="mVersionCount">0</strong><span>版本数</span></div>
+        </div>
+      </div>
+
+      <div class="modal-panel" id="panel-versions">
+        <div class="version-list" id="versionList"></div>
+      </div>
+
+      <div class="modal-panel" id="panel-comments">
+        <div class="comment-form">
+          <textarea class="comment-input" placeholder="分享你的使用体验…"></textarea>
+          <button class="btn btn-fill btn-sm" onclick="showToast('评论已发布！')">发表评论</button>
+        </div>
+        <div class="comment-list" id="commentList"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="like-btn" id="modalLikeBtn" onclick="toggleModalLike()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span id="modalLikeText">点赞</span>
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('链接已复制！')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        分享
+      </button>
+      <button class="btn btn-fill" style="margin-left:auto" onclick="showToast('技能已安装到 DinoClaw！')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        安装到 DinoClaw
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);padding:12px 22px;border-radius:12px;background:var(--ink);color:#fff;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(28,25,23,.18);z-index:600;transition:transform .3s var(--ease),opacity .3s;opacity:0;pointer-events:none;white-space:nowrap;"></div>
+
+<script src="skills-data.js"></script>
+<script>
+const { ICON_SVG, DEPT_ORDER, DEPT_LABELS, SKILLS, COMMENTS_DATA } = window.SKILLHUB_SHARED;
+const SORT_LABELS = {
+  uses: '使用次数',
+  likes: '点赞数',
+  updated: '最近更新',
+};
+
+let viewMode = 'grid';
+let currentSkill = null;
+let toastTimer;
+
+function renderSortMenu(activeKey){
+  const menu = document.getElementById('sortMenu');
+  if (!menu) return;
+  menu.innerHTML = Object.keys(SORT_LABELS).map(function (key){
+    const active = key === activeKey ? ' active' : '';
+    return '<button type="button" class="sort-option' + active + '" role="menuitemradio" aria-checked="' + (key === activeKey) + '" data-sort="' + key + '">' +
+      '<span>' + SORT_LABELS[key] + '</span>' +
+      '<svg class="sort-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>' +
+    '</button>';
+  }).join('');
+}
+
+function openSortMenu(){
+  const trigger = document.getElementById('sortTrigger');
+  const menu = document.getElementById('sortMenu');
+  if (!trigger || !menu) return;
+  trigger.classList.add('open');
+  trigger.setAttribute('aria-expanded', 'true');
+  menu.classList.add('open');
+}
+
+function closeSortMenu(){
+  const trigger = document.getElementById('sortTrigger');
+  const menu = document.getElementById('sortMenu');
+  if (!trigger || !menu) return;
+  trigger.classList.remove('open');
+  trigger.setAttribute('aria-expanded', 'false');
+  menu.classList.remove('open');
+}
+
+function toggleSortMenu(){
+  const menu = document.getElementById('sortMenu');
+  if (!menu) return;
+  if (menu.classList.contains('open')) closeSortMenu();
+  else openSortMenu();
+}
+
+function populateSidebar(){
+  const nav = document.getElementById('deptNav');
+  if (!nav) return;
+  const current = getDeptParam();
+  nav.innerHTML = DEPT_ORDER.map(function (key){
+    const label = DEPT_LABELS[key];
+    if (!label) return '';
+    const active = current === key ? ' active' : '';
+    return '<button type="button" class="dept-item' + active + '" data-dept="' + key + '">' + label + '</button>';
+  }).join('');
+}
+
+function selectDept(key){
+  if (!DEPT_LABELS[key]) return;
+  const u = new URL(window.location.href);
+  u.searchParams.set('dept', key);
+  history.pushState({}, '', u.pathname + u.search);
+  render();
+}
+
+function getDeptParam(){
+  const q = new URLSearchParams(window.location.search).get('dept');
+  if (!q || q === 'all') return 'all';
+  if (DEPT_LABELS[q] || q.startsWith('dept_')) return q;
+  return 'all';
+}
+
+function getSortParam(){
+  const q = new URLSearchParams(window.location.search).get('sort');
+  return SORT_LABELS[q] ? q : 'uses';
+}
+
+function selectSort(sortKey){
+  if (!SORT_LABELS[sortKey]) return;
+  const u = new URL(window.location.href);
+  u.searchParams.set('sort', sortKey);
+  history.pushState({}, '', u.pathname + u.search);
+  closeSortMenu();
+  render();
+}
+
+function parseMetric(value){
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 0;
+  if (raw.endsWith('k')) return Math.round(parseFloat(raw) * 1000);
+  if (raw.endsWith('m')) return Math.round(parseFloat(raw) * 1000000);
+  const num = parseFloat(raw.replace(/,/g, ''));
+  return Number.isFinite(num) ? num : 0;
+}
+
+function latestVersionTime(skill){
+  const latest = skill.versions && skill.versions[0] && skill.versions[0].date;
+  const ts = latest ? Date.parse(latest) : NaN;
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function filterSkills(deptKey){
+  if (deptKey === 'all') return SKILLS.slice();
+  return SKILLS.filter(s => (s.depts || []).includes(deptKey));
+}
+
+function sortSkills(list, sortKey){
+  const items = list.slice();
+  switch (sortKey) {
+    case 'uses':
+      return items.sort((a,b)=>parseMetric(b.uses) - parseMetric(a.uses));
+    case 'likes':
+      return items.sort((a,b)=>(b.likes || 0) - (a.likes || 0));
+    case 'updated':
+      return items.sort((a,b)=>latestVersionTime(b) - latestVersionTime(a));
+    case 'name':
+      return items.sort((a,b)=>String(a.name).localeCompare(String(b.name), 'zh-CN'));
+    default:
+      return items;
+  }
+}
+
+function renderSkillCard(s){
+  const likesHtml = `<span class="stat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${s.likes}</span>`;
+  return `<div class="skill-card" onclick="openModal(${s.id})">
+    <div class="skill-card-top">
+      <div class="skill-icon" style="background:${s.bg}">${ICON_SVG[s.iconKey]||''}</div>
+      <div class="skill-meta">
+        <div class="skill-name">${s.name}<span class="version-badge">${s.version}</span></div>
+        <div class="skill-desc">${s.desc}</div>
+        <div class="skill-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      </div>
+    </div>
+    <div class="skill-card-body">
+      <div class="skill-creator">
+        <div class="creator-avatar" style="background:${s.creatorColor}">${s.creator[0]}</div>
+        <div class="creator-info">
+          <div class="creator-name">${s.creator}</div>
+          <div class="creator-role">创作者</div>
+        </div>
+      </div>
+    </div>
+    <div class="skill-card-footer">
+      <span class="stat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/></svg>${s.uses} 次</span>
+      ${likesHtml}
+      <button type="button" class="btn-sm btn-fill" onclick="event.stopPropagation();showToast('「${s.name}」已安装！')">安装</button>
+    </div>
+  </div>`;
+}
+
+function renderSkillRow(s){
+  return `<div class="skill-row" onclick="openModal(${s.id})">
+    <div class="skill-row-icon" style="background:${s.bg}">${ICON_SVG[s.iconKey]||''}</div>
+    <div class="skill-row-main">
+      <div class="skill-row-title">${s.name} <span class="version-badge">${s.version}</span></div>
+      <div class="skill-row-desc">${s.desc}</div>
+      <div class="skill-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+    <div class="skill-row-meta">${s.uses} 次 · ${s.likes} 赞</div>
+    <button type="button" class="btn-sm btn-fill" onclick="event.stopPropagation();showToast('「${s.name}」已安装！')">安装</button>
+  </div>`;
+}
+
+function openModal(id){
+  const s = SKILLS.find(x=>x.id===id);
+  if(!s) return;
+  currentSkill = s;
+  const modalName = document.getElementById('mName');
+  modalName.childNodes[0].textContent = s.name + ' ';
+  document.getElementById('mVersion').textContent = s.version;
+  document.getElementById('mIcon').innerHTML = ICON_SVG[s.iconKey] || '';
+  document.getElementById('mIcon').style.background = s.bg;
+  document.getElementById('mCreator').textContent = s.creator;
+  document.getElementById('mContribs').textContent = `${s.contribs.length} 位贡献者`;
+  document.getElementById('mDesc').textContent = s.desc_long || s.desc;
+  document.getElementById('mVideoLabel').textContent = s.videoLabel || `演示：${s.name} · 2:00`;
+  document.getElementById('mUses').textContent = s.uses;
+  document.getElementById('mLikeCount').textContent = s.likes;
+  document.getElementById('mContribCount').textContent = s.contribs.length;
+  document.getElementById('mVersionCount').textContent = (s.versions || []).length;
+  document.getElementById('mTags').innerHTML = s.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+  document.getElementById('versionList').innerHTML = (s.versions || []).map(v=>`
+    <div class="version-item">
+      <div class="v-badge">${v.v}</div>
+      <div class="v-info">
+        <div class="v-date">${v.date}</div>
+        <div class="v-notes">${v.notes}</div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('commentList').innerHTML = COMMENTS_DATA.map(c=>`
+    <div class="comment-item">
+      <div class="comment-av" style="background:${c.color}">${c.initial}</div>
+      <div class="comment-content">
+        <div class="comment-meta">
+          <span class="comment-name">${c.name}</span>
+          <span class="comment-time">${c.time}</span>
+        </div>
+        <div class="comment-text">${c.text}</div>
+        <span class="comment-like" onclick="showToast('已点赞！')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          有用
+        </span>
+      </div>
+    </div>
+  `).join('');
+  switchTab(document.querySelector('.modal-tab'),'overview');
+  document.getElementById('modalLikeBtn').classList.remove('liked');
+  document.getElementById('modalLikeText').textContent = '点赞';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeModal(e){
+  if(e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+function closeModalDirect(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function switchTab(el,panel){
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.modal-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+panel).classList.add('active');
+}
+function toggleModalLike(){
+  const btn = document.getElementById('modalLikeBtn');
+  const txt = document.getElementById('modalLikeText');
+  btn.classList.toggle('liked');
+  if(btn.classList.contains('liked')){
+    txt.textContent = '已点赞';
+    if(currentSkill) currentSkill.likes++;
+  } else {
+    txt.textContent = '点赞';
+    if(currentSkill) currentSkill.likes--;
+  }
+  document.getElementById('mLikeCount').textContent = currentSkill?.likes || 0;
+  render();
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity='1';
+  t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{
+    t.style.opacity='0';
+    t.style.transform='translateX(-50%) translateY(20px)';
+  },2500);
+}
+
+function setViewMode(mode){
+  viewMode = mode;
+  document.getElementById('btnViewGrid').classList.toggle('active', mode === 'grid');
+  document.getElementById('btnViewList').classList.toggle('active', mode === 'list');
+  document.getElementById('btnViewGrid').setAttribute('aria-pressed', mode === 'grid');
+  document.getElementById('btnViewList').setAttribute('aria-pressed', mode === 'list');
+  document.getElementById('gridWrap').classList.toggle('hidden', mode === 'list');
+  document.getElementById('skillsList').classList.toggle('active', mode === 'list');
+}
+
+function render(){
+  populateSidebar();
+  const deptKey = getDeptParam();
+  const sortKey = getSortParam();
+  const label = DEPT_LABELS[deptKey] || deptKey;
+  const filtered = sortSkills(filterSkills(deptKey), sortKey);
+
+  document.getElementById('crumbDept').textContent = deptKey === 'all' ? '全部技能' : '「' + label + '」';
+  document.getElementById('pageTitle').textContent = deptKey === 'all'
+    ? '浏览全部技能'
+    : '浏览「' + label + '」全部技能';
+  document.title = (deptKey === 'all' ? '全部技能' : label + ' · 技能') + ' — SkillHub';
+
+  document.getElementById('resultCount').textContent = '共 ' + filtered.length + ' 个技能';
+  const sortTriggerLabel = document.getElementById('sortTriggerLabel');
+  if (sortTriggerLabel) sortTriggerLabel.textContent = SORT_LABELS[sortKey];
+  renderSortMenu(sortKey);
+
+  const grid = document.getElementById('skillsGrid');
+  const list = document.getElementById('skillsList');
+  if (filtered.length === 0){
+    grid.innerHTML = '';
+    list.innerHTML = '<div class="empty">该分类下暂无技能，请返回首页切换其他部门。</div>';
+    setViewMode('list');
+    document.getElementById('btnViewGrid').disabled = true;
+    document.getElementById('btnViewList').disabled = true;
+    return;
+  }
+  document.getElementById('btnViewGrid').disabled = false;
+  document.getElementById('btnViewList').disabled = false;
+  grid.innerHTML = filtered.map(renderSkillCard).join('');
+  list.innerHTML = filtered.map(renderSkillRow).join('');
+  setViewMode(viewMode);
+}
+
+document.addEventListener('DOMContentLoaded', function (){
+  const nav = document.getElementById('deptNav');
+  if (nav){
+    nav.addEventListener('click', function (e){
+      const btn = e.target.closest('.dept-item');
+      if (!btn) return;
+      const key = btn.getAttribute('data-dept');
+      if (key) selectDept(key);
+    });
+  }
+  const sortMenu = document.getElementById('sortMenu');
+  if (sortMenu) {
+    sortMenu.addEventListener('click', function (e){
+      const btn = e.target.closest('.sort-option');
+      if (!btn) return;
+      const key = btn.getAttribute('data-sort');
+      if (key) selectSort(key);
+    });
+  }
+  render();
+  document.addEventListener('click', function (e){
+    const sortPanel = e.target.closest('.sort-panel');
+    if (!sortPanel) closeSortMenu();
+  });
+  document.addEventListener('keydown', function (e){
+    if(e.key === 'Escape'){
+      closeSortMenu();
+      closeModalDirect();
+    }
+  });
+});
+window.addEventListener('popstate', render);
+</script>
+</body>
+</html>

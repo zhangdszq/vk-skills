@@ -45,6 +45,7 @@ a.btn-ghost{border:1px solid #E5E4DF;background:#F5F4F1;color:#4A4A45}
 </head>
 <body>
 <div class="card" id="root"></div>
+<script src="../skillhub-user.js"></script>
 <script>
 (function () {
   function escapeHtml(s) {
@@ -58,6 +59,18 @@ a.btn-ghost{border:1px solid #E5E4DF;background:#F5F4F1;color:#4A4A45}
   var authCode = qs.get("authCode") || qs.get("code");
   var state = qs.get("state");
   var root = document.getElementById("root");
+
+  function getSavedDisplayName() {
+    try {
+      return (
+        qs.get("displayName") ||
+        window.localStorage.getItem("skillhub_pending_login_name") ||
+        ""
+      ).trim();
+    } catch (e) {
+      return "";
+    }
+  }
 
   var savedState = "";
   try { savedState = sessionStorage.getItem("dt_oauth_state") || ""; } catch (e) {}
@@ -92,14 +105,24 @@ a.btn-ghost{border:1px solid #E5E4DF;background:#F5F4F1;color:#4A4A45}
     return;
   }
 
+  if (window.SKILLHUB_USER && window.SKILLHUB_USER.saveCurrentUser) {
+    window.SKILLHUB_USER.saveCurrentUser({
+      id: "dingtalk-" + authCode.slice(0, 8),
+      displayName: getSavedDisplayName() || "钉钉用户",
+      role: "Skill 创作者",
+      source: "dingtalk-oauth"
+    });
+  }
+
   root.innerHTML =
     '<div class="icon-ok"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></div>' +
     "<h1>已拿到授权码</h1>" +
-    '<p class="ok-sub">下一步：由服务端换取 accessToken（与 Electron 中 dingtalk-auth.ts 相同）</p>' +
-    "<p class=\"detail\">浏览器<strong>不能</strong>安全保存 clientSecret。请将下方 <code>authCode</code> POST 到你的后端，由后端调用钉钉 <code>userAccessToken</code> 接口。</p>" +
+    '<p class="ok-sub">已在本地写入当前登录人，可直接进入上传页继续登记 Skill</p>' +
+    "<p class=\"detail\">浏览器<strong>不能</strong>安全保存 clientSecret。当前静态站点会先缓存一个前端登录态，供上传页自动带出创建者；后续如接入后端，再用下方 <code>authCode</code> 完成真正的 token 换取。</p>" +
     "<pre id=\"payload\"></pre>" +
     '<div class="actions">' +
-    '<a class="btn btn-primary" href="../skillhub.html">进入技能社区</a>' +
+    '<a class="btn btn-primary" href="../upload-skill.html">去上传 Skill</a>' +
+    '<a class="btn btn-ghost" href="../skillhub.html">进入技能社区</a>' +
     '<a class="btn btn-ghost" href="../login.html">返回登录</a>' +
     "</div>" +
     '<div class="brand">DinoClaw</div>';

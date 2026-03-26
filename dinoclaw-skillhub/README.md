@@ -3,6 +3,8 @@
 从 `DinoClaw/website/` 迁入的独立静态站点，包含：
 
 - `skillhub.html`：技能社区主页
+- `skills-browse.html`：按部门浏览全部技能（卡片 / 列表切换，`?dept=` 与首页部门筛选一致）
+- `skills-data.js`：首页与浏览页共享的技能数据、部门映射与图标定义
 - `login.html`：钉钉扫码登录页
 - `cases.html`：使用案例页
 - `auth/dingtalk-callback.html`：钉钉 OAuth 回调页
@@ -13,6 +15,8 @@
 ```text
 dinoclaw-skillhub/
   skillhub.html
+  skills-browse.html
+  skills-data.js
   login.html
   cases.html
   auth/

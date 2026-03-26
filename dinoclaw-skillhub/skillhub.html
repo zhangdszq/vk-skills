@@ -285,7 +285,21 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 /* ============================================================
    STATS STRIP
    ============================================================ */
-.stats{padding:0 0 72px}
+.stats{padding:0 0 56px}
+/* Browse CTA (below stats) */
+.browse-cta{padding:0 0 56px;text-align:center}
+.browse-cta-inner{display:inline-flex;flex-direction:column;align-items:center;gap:10px;max-width:520px;margin:0 auto}
+.browse-cta-hint{font-size:12px;color:var(--ink-3);line-height:1.5}
+.btn-browse{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:52px;padding:0 28px;border-radius:14px;font-size:15px;font-weight:700;
+  border:none;cursor:pointer;font-family:inherit;
+  color:#fff;background:linear-gradient(135deg,var(--orange),var(--orange-d));
+  box-shadow:0 8px 24px var(--orange-glow);
+  transition:transform .2s var(--ease),box-shadow .2s;
+}
+.btn-browse:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,152,79,.28)}
+.btn-browse svg{width:18px;height:18px;flex-shrink:0}
 .stats-grid{
   display:grid;grid-template-columns:repeat(4,1fr);
   border-radius:22px;overflow:hidden;
@@ -899,7 +913,7 @@ footer{padding:24px 0 44px}
     </div>
 
     <div class="nav-actions">
-      <a href="#actions" class="nav-create">
+      <a href="upload-skill.html" class="nav-create">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         发布技能
       </a>
@@ -938,8 +952,8 @@ footer{padding:24px 0 44px}
     <div class="hero-cats-wrap">
       <div class="hero-cats-label">部门专属技能</div>
       <div class="hero-cats">
-        <div class="cat-pill" onclick="filterDept(this,'dept_dinoai')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.5 3.5 1.2-3.5 1.2L12 12l-1.2-3.1-3.5-1.2 3.5-1.2L12 3z"/><circle cx="12" cy="17" r="2"/><path d="M8 21h8"/></svg>DinoAI</div>
         <div class="cat-pill active" onclick="filterDept(this,'all')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>全部</div>
+        <div class="cat-pill" onclick="filterDept(this,'dept_dinoai')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.5 3.5 1.2-3.5 1.2L12 12l-1.2-3.1-3.5-1.2 3.5-1.2L12 3z"/><circle cx="12" cy="17" r="2"/><path d="M8 21h8"/></svg>DinoAI</div>
         <div class="cat-pill" onclick="filterDept(this,'dept_domestic')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V11l7-5 7 5v10"/><path d="M9 21v-8h6v8"/></svg>国内市场</div>
         <div class="cat-pill" onclick="filterDept(this,'dept_overseas')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>海外市场</div>
         <div class="cat-pill" onclick="filterDept(this,'dept_advisor')"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M4 20v-1a5 5 0 0 1 5-5"/><circle cx="17" cy="9" r="2.5"/><path d="M14 20v-1a4 4 0 0 1 3-3.7"/></svg>班主任</div>
@@ -976,6 +990,21 @@ footer{padding:24px 0 44px}
 </section>
 
 <!-- ============================
+     BROWSE BY DEPT (dynamic CTA)
+     ============================ -->
+<section class="browse-cta" aria-label="按分类浏览">
+<div class="wrap">
+  <div class="browse-cta-inner reveal">
+    <p class="browse-cta-hint" id="browseCtaHint">在当前分类下查看完整技能列表，支持卡片与列表视图切换。</p>
+    <button type="button" class="btn-browse" id="browseDeptBtn" onclick="goBrowseSkills()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span id="browseDeptBtnLabel">浏览全部技能</span>
+    </button>
+  </div>
+</div>
+</section>
+
+<!-- ============================
      THREE ACTIONS
      ============================ -->
 <section class="actions" id="actions">
@@ -985,7 +1014,7 @@ footer{padding:24px 0 44px}
     <p>无论你是创作者还是用户，都有专属入口</p>
   </div>
   <div class="actions-grid">
-    <div class="action-card upload reveal" onclick="showToast('打开打包上传向导…')">
+    <div class="action-card upload reveal" onclick="window.location.href='upload-skill.html'">
       <div class="action-icon ic-o"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg></div>
       <h3>登记打包上传</h3>
       <p>将你的本地技能规范化、打包为标准 SKILL.md 格式，上架到 SkillHub。</p>
@@ -1040,7 +1069,7 @@ footer{padding:24px 0 44px}
 <div class="wrap">
   <div class="section-head reveal">
     <h2 class="serif">精选技能</h2>
-    <a href="#" class="link">浏览全部 →</a>
+    <a href="skills-browse.html?dept=all" class="link">浏览全部 →</a>
   </div>
 
   <div class="skills-filter reveal">
@@ -1345,26 +1374,9 @@ footer{padding:24px 0 44px}
   pointer-events:none;white-space:nowrap;
 "></div>
 
+<script src="skills-data.js"></script>
 <script>
-/* ============================================================
-   INLINE SVG ICONS (no emoji)
-   ============================================================ */
-const ICON_SVG = {
-  chartBars: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20v-9"/></svg>',
-  penLine: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7h-4v-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14L13 18l5-5z"/></svg>',
-  chat: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-  search: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
-  clapper: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="7" width="20" height="12" rx="2"/><path d="M7 7V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2"/><circle cx="12" cy="13" r="3"/></svg>',
-  laptop: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M9 8h6M9 12h4"/></svg>',
-  calendar: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
-  mail: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="M22 7l-10 7L2 7"/></svg>',
-  target: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>',
-  globe: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
-  dino: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17c1-6 3-9 7-10-1-3 1-5 4-5 2 0 3 2 3 4 0 3-2 5-5 5-1 4-3 6-9 6z"/><circle cx="16" cy="8" r="1.2" fill="currentColor"/><path d="M4 14H2M6 12l-2-1"/></svg>',
-  starBurst: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l1.8 5.5L19 9l-5.5 1.8L12 16l-1.5-5.2L5 9l5.2-1.5L12 2z"/></svg>',
-  diamondG: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 8-7 10-7-10 7-8z"/></svg>',
-  waves: '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>',
-};
+const { ICON_SVG, SKILLS, COMMENTS_DATA, DEPT_LABELS } = window.SKILLHUB_SHARED;
 
 function rankMedalHtml(rank){
   const palette = {
@@ -1376,118 +1388,6 @@ function rankMedalHtml(rank){
   if (!p) return String(rank);
   return '<svg class="ico-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="9" r="6.5" fill="' + p.fill + '" stroke="' + p.stroke + '" stroke-width="1.5"/><text x="12" y="11.5" text-anchor="middle" font-size="8" font-weight="800" fill="#1C1917">' + rank + '</text><path d="M8 15l4 6 4-6" fill="' + p.fill + '" stroke="' + p.stroke + '" stroke-width="1.2" stroke-linejoin="round"/></svg>';
 }
-
-/* ============================================================
-   DATA
-   ============================================================ */
-const SKILLS = [
-  {
-    id:1,iconKey:"chartBars",bg:"linear-gradient(135deg,#F0984F,#E07A2F)",
-    name:"数据分析助手",version:"v2.1.4",
-    desc:"上传 CSV/Excel，自动生成趋势分析、异常检测与可视化报告，支持自然语言提问。",
-    tags:["数据分析","Excel","可视化"],
-    creator:"Baoyu",creatorColor:"linear-gradient(135deg,#F0984F,#E07A2F)",
-    contribs:[{c:"#2EB8D9",t:"Z"},{c:"#7C6FDB",t:"L"}],
-    uses:"8.4k",likes:342,cat:"data",
-    depts:["dept_dinoai","dept_data_analytics","dept_product","dept_ops"],
-    desc_long:"上传任何 CSV 或 Excel 文件后，本技能可自动识别字段类型，计算描述性统计量，检测时序趋势与异常数据点，并生成可直接发送的可视化报告。支持用中文自然语言追问，例如「上周比上上周下降了多少」。",
-    versions:[
-      {v:"v2.1.4",date:"2025-06-01",notes:"修复空列处理 bug，提升大文件性能 30%"},
-      {v:"v2.1.0",date:"2025-05-15",notes:"新增异常检测模块，支持 3-sigma 和 IQR 方法"},
-      {v:"v2.0.0",date:"2025-04-10",notes:"重构提示词结构，支持多表关联分析"},
-    ],
-    videoLabel:"演示：Excel 数据分析 · 3:12",
-  },
-  {
-    id:2,iconKey:"penLine",bg:"linear-gradient(135deg,#7C6FDB,#6558C4)",
-    name:"日报周报生成器",version:"v1.3.0",
-    desc:"根据工作日志或简单描述，自动格式化为标准日报/周报，一键复制发飞书/钉钉。",
-    tags:["内容创作","效率","报告"],
-    creator:"小雨",creatorColor:"linear-gradient(135deg,#7C6FDB,#6558C4)",
-    contribs:[{c:"#F0984F",t:"B"},{c:"#3AAF6E",t:"J"},{c:"#2EB8D9",t:"Z"}],
-    uses:"5.2k",likes:218,cat:"content",
-    depts:["dept_dinoai","dept_picture_book","dept_ops","dept_hr","dept_finance"],
-    desc_long:"输入你今天做了什么（随意格式），技能自动整理为规范的日报结构：今日完成、明日计划、需要协调。支持钉钉卡片、飞书文档、纯文本三种输出格式，可设置个人风格偏好。",
-    versions:[
-      {v:"v1.3.0",date:"2025-06-03",notes:"新增飞书卡片输出格式"},
-      {v:"v1.2.0",date:"2025-05-20",notes:"支持周报模式，自动汇总当周日报"},
-    ],
-    videoLabel:"演示：从碎片笔记到规范日报 · 1:45",
-  },
-  {
-    id:3,iconKey:"chat",bg:"linear-gradient(135deg,#2EB8D9,#1A9DC0)",
-    name:"销售话术教练",version:"v3.0.1",
-    desc:"分析销售通话录音或文字记录，从邀约、诊脉、异议处理维度给出专业反馈。",
-    tags:["销售支持","分析","培训"],
-    creator:"Lily",creatorColor:"linear-gradient(135deg,#2EB8D9,#1A9DC0)",
-    contribs:[{c:"#F0984F",t:"M"},{c:"#7C6FDB",t:"K"}],
-    uses:"3.8k",likes:156,cat:"sales",
-    depts:["dept_dinoai","dept_sales","dept_study_tour","dept_domestic","dept_overseas"],
-    desc_long:"基于销冠实战心法，对销售对话从七个维度评分：开场白质量、需求挖掘深度、产品匹配度、异议处理能力、逼单时机、情绪管理、后续跟进计划。提供具体改进建议和示范话术。",
-    versions:[
-      {v:"v3.0.1",date:"2025-06-02",notes:"热修复：修复中文引号识别问题"},
-      {v:"v3.0.0",date:"2025-05-28",notes:"全面重构评分体系，新增情绪管理维度"},
-      {v:"v2.5.0",date:"2025-04-30",notes:"支持音频文件自动转录后分析"},
-    ],
-    videoLabel:"演示：通话录音分析 · 2:58",
-  },
-  {
-    id:4,iconKey:"search",bg:"linear-gradient(135deg,#3AAF6E,#2D8F58)",
-    name:"竞品调研摘要",version:"v1.1.2",
-    desc:"输入竞品名称或 URL，自动抓取公开信息，生成结构化竞品分析报告。",
-    tags:["调研洞察","竞品","报告"],
-    creator:"Jason",creatorColor:"linear-gradient(135deg,#3AAF6E,#2D8F58)",
-    contribs:[{c:"#F0984F",t:"A"}],
-    uses:"2.1k",likes:89,cat:"research",
-    depts:["dept_study_tour","dept_overseas","dept_product","dept_data_analytics"],
-    desc_long:"使用浏览器 CDP 和搜索工具抓取目标竞品的官网、AppStore 评价、新闻报道、招聘信息等公开数据，自动整合为：产品定位、核心功能、用户反馈、近期动态、与我们的对比五个模块。",
-    versions:[
-      {v:"v1.1.2",date:"2025-06-04",notes:"改善 App Store 评价抓取稳定性"},
-      {v:"v1.1.0",date:"2025-05-18",notes:"新增 LinkedIn 招聘信息维度"},
-    ],
-    videoLabel:"演示：竞品一键调研 · 2:05",
-  },
-  {
-    id:5,iconKey:"clapper",bg:"linear-gradient(135deg,#E07A2F,#C96020)",
-    name:"YouTube 智能剪辑",version:"v2.2.0",
-    desc:"下载视频和字幕，AI 分析生成章节，一键剪辑片段并烧录双语字幕。",
-    tags:["媒体处理","视频","字幕"],
-    creator:"Baoyu",creatorColor:"linear-gradient(135deg,#F0984F,#E07A2F)",
-    contribs:[{c:"#2EB8D9",t:"Z"},{c:"#3AAF6E",t:"J"}],
-    uses:"4.7k",likes:201,cat:"media",
-    depts:["dept_picture_book","dept_study_tour","dept_teacher","dept_research_edu","dept_advisor"],
-    desc_long:"输入 YouTube URL，技能自动下载视频与字幕，AI 分析内容结构生成精细章节（分钟级），用户选择目标片段后自动剪辑、将字幕翻译为中英双语、烧录字幕到视频，并输出总结文案。",
-    versions:[
-      {v:"v2.2.0",date:"2025-06-01",notes:"支持批量下载，新增字幕样式选项"},
-      {v:"v2.1.0",date:"2025-05-10",notes:"AI 章节分析精度提升"},
-      {v:"v2.0.0",date:"2025-04-20",notes:"重构为双语字幕烧录流程"},
-    ],
-    videoLabel:"演示：视频剪辑全流程 · 3:40",
-  },
-  {
-    id:6,iconKey:"laptop",bg:"linear-gradient(135deg,#6558C4,#4E43A8)",
-    name:"代码 Review 助手",version:"v1.4.1",
-    desc:"分析 Git diff 或代码片段，从安全性、性能、可读性、测试覆盖四个维度给出 Review 意见。",
-    tags:["代码工具","Review","质量"],
-    creator:"Alex",creatorColor:"linear-gradient(135deg,#6558C4,#4E43A8)",
-    contribs:[{c:"#F0984F",t:"B"},{c:"#2EB8D9",t:"Z"}],
-    uses:"6.3k",likes:287,cat:"code",
-    depts:["dept_dinoai","dept_engineering","dept_qa","dept_product"],
-    desc_long:"粘贴 Git diff 或代码片段，技能系统性地检查：潜在安全漏洞（SQL注入、XSS等）、性能瓶颈（N+1查询、无效循环）、可读性问题（命名、复杂度）、缺失的测试用例，并给出具体的修改建议和改进示例。",
-    versions:[
-      {v:"v1.4.1",date:"2025-06-03",notes:"热修复 Python 类型提示解析"},
-      {v:"v1.4.0",date:"2025-05-25",notes:"新增 TypeScript/Rust 语言支持"},
-      {v:"v1.3.0",date:"2025-05-01",notes:"加入安全漏洞专项检测模块"},
-    ],
-    videoLabel:"演示：PR Review 全流程 · 2:22",
-  },
-];
-
-const COMMENTS_DATA = [
-  {name:"张小明",color:"linear-gradient(135deg,#F0984F,#E07A2F)",initial:"张",time:"3小时前",text:"真的超好用！导出的报告直接给老板看，省了我半天时间。"},
-  {name:"Lily Chen",color:"linear-gradient(135deg,#2EB8D9,#1A9DC0)",initial:"L",time:"1天前",text:"数据量大的时候会稍微慢一点，但分析质量很高，比我自己写的好多了。"},
-  {name:"王运营",color:"linear-gradient(135deg,#7C6FDB,#6558C4)",initial:"王",time:"2天前",text:"建议增加月报模式，其他都很完美！"},
-];
 
 const BOARD_DATA = [
   {rank:1,iconKey:"laptop",name:"代码 Review 助手",creator:"Alex",uses:"6.3k",delta:"+12%"},
@@ -1742,10 +1642,28 @@ function vote(btn,idx){
 /** Hero filter: all skills | by department (primary) */
 let skillListFilter = {kind:'all'};
 
+function updateBrowseCta(){
+  const labelEl = document.getElementById('browseDeptBtnLabel');
+  if(!labelEl) return;
+  if(skillListFilter.kind === 'all'){
+    labelEl.textContent = '浏览全部技能';
+  } else {
+    const key = skillListFilter.dept;
+    const name = DEPT_LABELS[key] || key;
+    labelEl.textContent = '浏览「' + name + '」全部技能';
+  }
+}
+
+function goBrowseSkills(){
+  const d = skillListFilter.kind === 'dept' && skillListFilter.dept ? skillListFilter.dept : 'all';
+  window.location.href = 'skills-browse.html?dept=' + encodeURIComponent(d);
+}
+
 function filterDept(el,deptKey){
   document.querySelectorAll('.hero-cats .cat-pill').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   skillListFilter = deptKey === 'all' ? {kind:'all'} : {kind:'dept', dept:deptKey};
+  updateBrowseCta();
   renderSkillCards();
 }
 
@@ -1818,6 +1736,7 @@ const io = new IntersectionObserver((entries,observer)=>{
 },{threshold:.08,rootMargin:'0px 0px -30px 0px'});
 
 document.addEventListener('DOMContentLoaded',()=>{
+  updateBrowseCta();
   renderSkillCards();
   renderBoard();
   renderRising();
