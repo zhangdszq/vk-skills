@@ -105,12 +105,14 @@ $AUTH_HELPER user-basic 57775188
 $AUTH_HELPER user-login-strategy 57775188
 $AUTH_HELPER user-orgs 57775188
 $AUTH_HELPER user-role-list 600000000 --app-id 2
+$AUTH_HELPER user-role-list 600000000 --app-id 1 --owned-only --vk-cr-code hk
 $AUTH_HELPER app-list
 $AUTH_HELPER app-detail 1
 $AUTH_HELPER business-list
 $AUTH_HELPER menu-tree --app-id 1
 $AUTH_HELPER role-permissions 2397
 $AUTH_HELPER user-permissions 60172103 --app-id 1
+$AUTH_HELPER user-permissions 60172103 --app-id 1 --cr-codes hk,ts,k2
 $AUTH_HELPER permission-check /api/parent/list
 ```
 
@@ -127,19 +129,31 @@ $AUTH_HELPER permission-check /api/parent/list
 两个关键字段必须记住：
 - `loginType`：`0=密码登录`，`1=验证码登录`
 - `menuTreeList[].type`：`0=页面/菜单权限`，`1=按钮/操作权限`
+- `authStatus`：`1=当前用户真实拥有该角色`，`0=当前业务线下存在这个角色，但当前用户并未拥有`
+- `vk-cr-code`：当前请求命中的业务线范围；不切换它，就不是“所有业务线”
 
 如果用户问“某个人在某个应用下有哪些页面权限和按钮权限”，默认链路是：
 
 1. 先查 `user-role-list`
-2. 再查 `role-detail`
-3. 从 `menuTreeList` 里按 `type` 分类
-4. 或直接用 `user-permissions`
+2. 先按 `authStatus=1` 过滤出真实拥有角色
+3. 再查 `role-detail`
+4. 从 `menuTreeList` 里按 `type` 分类
+5. 或直接用 `user-permissions`
 
-`user-permissions` 会输出按角色拆分的权限，以及去重后的 `uniquePages`、`uniqueButtons` 汇总结果。
+`user-permissions` 默认只统计 `authStatus=1` 的真实拥有角色，并输出按角色拆分的权限，以及去重后的 `uniquePages`、`uniqueButtons` 汇总结果。
+
+如果用户问“国际化管理端所有业务线的权限 / 角色”，默认链路是：
+
+1. 先查 `app-detail`，确认该应用挂了哪些业务线
+2. 不要只看配置里的单个 `auth_vk_cr_code`
+3. 用 `user-role-list --owned-only --vk-cr-code <业务线>` 或 `user-permissions --cr-codes hk,ts,k2`
+4. 逐个业务线汇总，再做差异比对
+5. 如果要写入角色，必须按业务线拆分预览和执行
 
 补充要求：
 - 如果某个角色的 `role-detail` 查询失败，必须把失败角色单独列出
 - 不能把“查询失败”直接当成“这个人没有该角色权限”
+- 不能把 `user-role-list` 返回的全部角色直接当成“用户已有角色”；必须先看 `authStatus`
 
 ## 安全约束
 
@@ -171,6 +185,8 @@ $AUTH_HELPER permission-check /api/parent/list
 | 权限系统未登录 / 403 | 先运行 `refresh-token` 刷新登录态，再检查 `auth_app_code`、`auth_vk_cr_code` |
 | 权限系统 HTTP 正常但结果异常 | 先打印完整响应，再按 `code`、`msg`、`data` 判断 |
 | 登录策略不一致 | 先查 `user-login-strategy`，确认 `loginType` 是否匹配 |
+| 查“所有业务线”却只看到一部分角色 | 大概率只用了单个 `vk-cr-code`，先看 `app-detail` 的 `appBusinessList`，再按业务线逐个查询 |
+| 角色列表很多但实际页面没权限 | 先看 `authStatus`，只有 `authStatus=1` 才代表当前用户真实拥有该角色 |
 
 ## 按需阅读的参考文档
 

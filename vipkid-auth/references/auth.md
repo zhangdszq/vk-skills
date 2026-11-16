@@ -120,6 +120,9 @@ GET /api/role/userRole/list?userId=600000000&appId=2
 
 - `添加员工角色` 虽然是常见操作，也必须先展示 `userId`、`appId`、目标角色清单再确认
 - 两个删除接口都属于高风险操作，默认只给预览，不直接执行
+- `GET /api/role/userRole/list` 返回的是“当前应用 + 当前 `vk-cr-code` 下的角色列表”，不是“当前用户已经拥有的角色列表”
+- 必须结合 `authStatus` 解读：`authStatus=1` 才代表当前用户真实拥有该角色，`authStatus=0` 只是该业务线下存在这个角色
+- 如果要查“国际化管理端所有业务线”，不能只打一条请求；要按不同 `vk-cr-code` 逐个查
 
 ---
 
@@ -174,6 +177,7 @@ POST /api/roleMenu/delete
 - `GET /api/app/getById` 的返回里会直接带 `appBusinessList`，可据此看到“这个应用当前挂了哪些业务线”
 - `appBusinessList[].dataPermissionStatus`：`1=已开启数据权限`、`0=未开启`
 - 这类接口会影响应用与业务线映射，属于普通写操作，执行前仍需展示目标列表
+- 对国际化管理端这类多业务线应用，`appBusinessList` 也是判断要不要切换 `vk-cr-code` 的第一手依据
 
 ---
 
@@ -270,6 +274,20 @@ POST /api/roleMenu/delete
 - `check` 常用于判断某个后端接口地址当前用户是否有权限
 - `getTreeMenus` 适合排查“为什么页面没显示菜单”
 
+### `authStatus` 与 `vk-cr-code`
+
+这是这套权限系统里最容易误判的两个点：
+
+- `authStatus=1`：当前用户真实拥有该角色
+- `authStatus=0`：当前业务线下存在这个角色，但当前用户并未拥有
+- `vk-cr-code`：请求命中的业务线范围；同一个 `appId` 在不同 `vk-cr-code` 下，角色集合可能完全不同
+
+实战建议：
+
+1. 查单个业务线：先确认 `vk-cr-code`，再看 `authStatus`
+2. 查“所有业务线”：先看 `GET /api/app/getById` 的 `appBusinessList`，再按业务线逐个请求
+3. 做“权限复制 / 权限对齐”：先按业务线算出真实拥有角色，再按业务线分批调用 `POST /api/role/userRole/add`
+
 ### 角色详情中的页面 / 按钮权限
 
 `GET /api/role/detail` 的返回里通常有 `menuTreeList`，可以直接拿来判断这个角色具体拥有哪些页面和按钮权限。
@@ -328,7 +346,7 @@ POST /api/roleMenu/delete
 | `user-detail` | `GET /api/user/getById` | 员工详情 |
 | `user-login-strategy` | `GET /api/user/getById` | 登录策略 |
 | `user-orgs` | `GET /api/user/getUserOrgList` | 组织归属 |
-| `user-role-list` | `GET /api/role/userRole/list` | 员工角色 |
+| `user-role-list` | `GET /api/role/userRole/list` | 员工角色；`--owned-only` 只保留 `authStatus=1` 的真实拥有角色，`--vk-cr-code` 可切换业务线 |
 | `org-tree` | `GET /api/org/getOrgTrees` | 组织树 |
 | `org-detail` | `GET /api/org/getDetail` | 组织详情 |
 | `app-list` | `GET /api/app/getAppList` | 应用列表 |
@@ -336,7 +354,7 @@ POST /api/roleMenu/delete
 | `business-list` | `GET /api/business/getList` | 业务线列表 |
 | `menu-tree` | `GET /api/menuTree/getAllTreeMenus` | 菜单树 |
 | `role-permissions` | `GET /api/role/detail` | 角色页面 / 按钮权限 |
-| `user-permissions` | `GET /api/role/userRole/list` + `GET /api/role/detail` | 员工在某应用下的页面 / 按钮权限汇总，输出 `uniquePages`、`uniqueButtons`，并显式列出失败角色 |
+| `user-permissions` | `GET /api/role/userRole/list` + `GET /api/role/detail` | 员工在某应用下的页面 / 按钮权限汇总，默认只统计 `authStatus=1` 的真实拥有角色；支持 `--cr-codes` 跨业务线汇总 |
 | `permission-check` | `GET /api/auth/permission/function/check` | 功能权限校验 |
 | `user-role-add` | `POST /api/role/userRole/add` | 添加员工角色 |
 | `user-role-delete` | `GET /api/role/userRole/delete` 或 `deleteByRoleCode` | 删除员工角色，两套参数互斥：`--id` 不能与 `--user-id/--role-codes` 同时传 |
@@ -352,5 +370,8 @@ POST /api/roleMenu/delete
 - 如果用户只提供“邮箱关键词”“角色码”“菜单码”这类半结构化信息，先补齐必要主键，再给执行方案
 - 如果用户只给中文姓名，先用 `user-search-name` 定位，再继续查角色、组织或登录策略
 - 如果用户问“这个人能看到哪些页面 / 能点哪些按钮”，优先用 `user-permissions`
+- 如果用户问“这个人实际拥有哪些角色”，优先用 `user-role-list --owned-only`
+- 如果用户问“所有业务线 / 国际化管理端全部业务线”，先用 `app-detail` 确认业务线，再用 `user-permissions --cr-codes ...`
+- 如果要把国际化管理端权限从 A 复制给 B，不要一次性按一个 `appId` 粗暴添加；要先按业务线比对真实拥有角色，再按每个 `vk-cr-code` 分批写入
 - 删除、同步、批量登出、改密一律先做二次确认
 - 删除员工角色接口当前是 `GET`，不要分享带完整参数的 URL 或日志截图，避免暴露目标对象信息

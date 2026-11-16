@@ -14,9 +14,9 @@ auth_helper.py - 权限系统辅助工具
   python3 auth_helper.py user-detail <userId>
   python3 auth_helper.py user-login-strategy <userId>
   python3 auth_helper.py user-orgs <userId>
-  python3 auth_helper.py user-role-list <userId> --app-id 2
+  python3 auth_helper.py user-role-list <userId> --app-id 2 [--owned-only] [--vk-cr-code hk]
   python3 auth_helper.py role-permissions <roleId>
-  python3 auth_helper.py user-permissions <userId> --app-id 1
+  python3 auth_helper.py user-permissions <userId> --app-id 1 [--vk-cr-code hk] [--cr-codes hk,ts,k2] [--include-unowned]
   python3 auth_helper.py org-tree
   python3 auth_helper.py org-detail <orgId>
   python3 auth_helper.py app-list [--name leads] [--code leads-management]
@@ -222,6 +222,18 @@ def api_request(method, path, params=None, data=None):
     return api_request_with_headers(config["auth_base_url"], headers, method, path, params=params, data=data)
 
 
+def api_request_for_vk_cr_code(vk_cr_code, method, path, params=None, data=None):
+    config = require_auth_config()
+    headers = build_headers_from_values(
+        config.get("auth_app_code", ""),
+        vk_cr_code,
+        auth_cookie=config.get("auth_cookie", ""),
+        auth_authorization=config.get("auth_authorization", ""),
+        auth_intl_auth_token=config.get("auth_intl_auth_token", ""),
+    )
+    return api_request_with_headers(config["auth_base_url"], headers, method, path, params=params, data=data)
+
+
 def parse_response_body(body):
     try:
         return json.loads(body)
@@ -404,6 +416,25 @@ def parse_str_list(raw_value):
     return items
 
 
+def resolve_vk_cr_codes(vk_cr_code=None, cr_codes=None):
+    single_code = str(vk_cr_code or "").strip()
+    multi_codes = parse_str_list(cr_codes or "")
+    if single_code and multi_codes:
+        print("[ERROR] --vk-cr-code 与 --cr-codes 不能同时传。")
+        sys.exit(1)
+    if multi_codes:
+        return multi_codes
+    if single_code:
+        return [single_code]
+
+    config = require_auth_config()
+    default_code = str(config.get("auth_vk_cr_code", "")).strip()
+    if not default_code:
+        print("[ERROR] 当前未配置 auth_vk_cr_code，请显式传入 --vk-cr-code 或 --cr-codes。")
+        sys.exit(1)
+    return [default_code]
+
+
 def preview_write_action(action_name, path, payload, confirm):
     print(f"即将执行写操作：{action_name}")
     print(f"接口：{path}")
@@ -456,7 +487,14 @@ def build_role_summary(role_data):
         "roleId": role_data.get("id") if role_data.get("id") is not None else role_data.get("roleId"),
         "roleCode": role_data.get("code") if role_data.get("code") is not None else role_data.get("roleCode"),
         "roleName": role_data.get("name") if role_data.get("name") is not None else role_data.get("roleName"),
+        "businessId": role_data.get("businessId"),
+        "authStatus": role_data.get("authStatus"),
+        "owned": role_data.get("authStatus") == 1,
     }
+
+
+def role_is_owned(role_data):
+    return bool(isinstance(role_data, dict) and role_data.get("authStatus") == 1)
 
 
 def command_refresh_token(args):
@@ -547,12 +585,33 @@ def command_user_orgs(args):
 
 
 def command_user_role_list(args):
-    resp = api_request(
+    request_func = api_request_for_vk_cr_code if args.vk_cr_code else api_request
+    request_args = (
+        args.vk_cr_code,
         "GET",
         "/api/role/userRole/list",
+    ) if args.vk_cr_code else (
+        "GET",
+        "/api/role/userRole/list",
+    )
+    resp = request_func(
+        *request_args,
         params={"userId": args.user_id, "appId": args.app_id},
     )
-    print_json(resp)
+    if not isinstance(resp, dict) or resp.get("code") != 200 or not isinstance(resp.get("data"), list):
+        print_json(resp)
+        return
+
+    roles = resp.get("data") or []
+    result = dict(resp)
+    result["returnedRoleCount"] = len(roles)
+    result["ownedRoleCount"] = sum(1 for role in roles if role_is_owned(role))
+    if args.vk_cr_code:
+        result["vkCrCode"] = args.vk_cr_code
+    if args.owned_only:
+        result["data"] = [role for role in roles if role_is_owned(role)]
+        result["warning"] = "原始接口会返回当前应用在该业务线下的全部角色；这里只保留 authStatus=1 的真实拥有角色。"
+    print_json(result)
 
 
 def command_org_tree(_args):
@@ -618,68 +677,124 @@ def command_role_permissions(args):
 
 
 def command_user_permissions(args):
-    roles_resp = api_request(
-        "GET",
-        "/api/role/userRole/list",
-        params={"userId": args.user_id, "appId": args.app_id},
-    )
-    if not isinstance(roles_resp, dict) or roles_resp.get("code") != 200:
-        print_json(roles_resp)
-        return
-
+    requested_cr_codes = resolve_vk_cr_codes(args.vk_cr_code, args.cr_codes)
     role_summaries = []
     unique_pages = {}
     unique_buttons = {}
     failed_roles = []
-    for role in roles_resp.get("data") or []:
-        role_summary = build_role_summary(role)
-        role_id = role_summary.get("roleId")
-        if role_id is None:
+    skipped_roles = []
+    per_cr = []
+    returned_role_count = 0
+    owned_role_count = 0
+
+    for vk_cr_code in requested_cr_codes:
+        roles_resp = api_request_for_vk_cr_code(
+            vk_cr_code,
+            "GET",
+            "/api/role/userRole/list",
+            params={"userId": args.user_id, "appId": args.app_id},
+        )
+        if not isinstance(roles_resp, dict) or roles_resp.get("code") != 200:
             failed_roles.append({
-                **role_summary,
-                "reason": "缺少角色 ID，无法继续查询角色详情",
+                "vkCrCode": vk_cr_code,
+                "reason": "员工角色查询失败",
+                "detailResponse": roles_resp,
             })
             continue
 
-        detail_resp = api_request("GET", "/api/role/detail", params={"id": role_id})
-        if not isinstance(detail_resp, dict) or detail_resp.get("code") != 200 or not detail_resp.get("data"):
-            failed_roles.append({
-                **role_summary,
-                "reason": "角色详情查询失败",
-                "detailResponse": detail_resp,
+        roles = roles_resp.get("data") or []
+        returned_role_count += len(roles)
+        current_owned_roles = [role for role in roles if role_is_owned(role)]
+        owned_role_count += len(current_owned_roles)
+        included_roles = roles if args.include_unowned else current_owned_roles
+
+        per_cr_item = {
+            "vkCrCode": vk_cr_code,
+            "returnedRoleCount": len(roles),
+            "ownedRoleCount": len(current_owned_roles),
+            "includedRoleCount": len(included_roles),
+        }
+        if not args.include_unowned:
+            current_skipped_roles = [
+                {
+                    **build_role_summary(role),
+                    "vkCrCode": vk_cr_code,
+                    "reason": "authStatus != 1，当前用户并未拥有该角色",
+                }
+                for role in roles
+                if not role_is_owned(role)
+            ]
+            skipped_roles.extend(current_skipped_roles)
+            per_cr_item["skippedRoleCount"] = len(current_skipped_roles)
+        per_cr.append(per_cr_item)
+
+        for role in included_roles:
+            role_summary = build_role_summary(role)
+            role_id = role_summary.get("roleId")
+            if role_id is None:
+                failed_roles.append({
+                    **role_summary,
+                    "vkCrCode": vk_cr_code,
+                    "reason": "缺少角色 ID，无法继续查询角色详情",
+                })
+                continue
+
+            detail_resp = api_request_for_vk_cr_code(vk_cr_code, "GET", "/api/role/detail", params={"id": role_id})
+            if not isinstance(detail_resp, dict) or detail_resp.get("code") != 200 or not detail_resp.get("data"):
+                failed_roles.append({
+                    **role_summary,
+                    "vkCrCode": vk_cr_code,
+                    "reason": "角色详情查询失败",
+                    "detailResponse": detail_resp,
+                })
+                continue
+            detail = detail_resp["data"]
+            pages, buttons = summarize_menu_items(detail.get("menuTreeList") or [])
+            for item in pages:
+                unique_pages[build_menu_item_key(item)] = item
+            for item in buttons:
+                unique_buttons[build_menu_item_key(item)] = item
+            role_summaries.append({
+                "vkCrCode": vk_cr_code,
+                "businessId": detail.get("businessId"),
+                "authStatus": role.get("authStatus"),
+                "owned": role_is_owned(role),
+                "roleId": detail.get("id"),
+                "roleCode": detail.get("code"),
+                "roleName": detail.get("name"),
+                "pageCount": len(pages),
+                "buttonCount": len(buttons),
+                "pages": pages,
+                "buttons": buttons,
             })
-            continue
-        detail = detail_resp["data"]
-        pages, buttons = summarize_menu_items(detail.get("menuTreeList") or [])
-        for item in pages:
-            unique_pages[build_menu_item_key(item)] = item
-        for item in buttons:
-            unique_buttons[build_menu_item_key(item)] = item
-        role_summaries.append({
-            "roleId": detail.get("id"),
-            "roleCode": detail.get("code"),
-            "roleName": detail.get("name"),
-            "pageCount": len(pages),
-            "buttonCount": len(buttons),
-            "pages": pages,
-            "buttons": buttons,
-        })
 
     result = {
         "userId": args.user_id,
         "appId": args.app_id,
-        "requestedRoleCount": len(roles_resp.get("data") or []),
+        "requestedCrCodes": requested_cr_codes,
+        "includeUnowned": bool(args.include_unowned),
+        "returnedRoleCount": returned_role_count,
+        "ownedRoleCount": owned_role_count,
         "roleCount": len(role_summaries),
+        "skippedRoleCount": len(skipped_roles),
         "failedRoleCount": len(failed_roles),
         "uniquePageCount": len(unique_pages),
         "uniqueButtonCount": len(unique_buttons),
         "uniquePages": list(unique_pages.values()),
         "uniqueButtons": list(unique_buttons.values()),
         "roles": role_summaries,
+        "perCr": per_cr,
     }
+    if skipped_roles:
+        result["skippedRoles"] = skipped_roles
+        result["warning"] = "GET /api/role/userRole/list 会返回当前应用在该业务线下的全部角色；默认只统计 authStatus=1 的真实拥有角色。"
     if failed_roles:
         result["failedRoles"] = failed_roles
-        result["warning"] = "部分角色详情查询失败，当前结果不是完整权限视图，不能直接按“无权限”解读。"
+        failure_warning = "部分角色详情查询失败，当前结果不是完整权限视图，不能直接按“无权限”解读。"
+        if result.get("warning"):
+            result["warning"] = f"{result['warning']} {failure_warning}"
+        else:
+            result["warning"] = failure_warning
     print_json(result)
 
 
@@ -869,6 +984,8 @@ def build_parser():
     user_role_list_parser = subparsers.add_parser("user-role-list", help="查询员工角色")
     user_role_list_parser.add_argument("user_id", type=int)
     user_role_list_parser.add_argument("--app-id", type=int, required=True)
+    user_role_list_parser.add_argument("--owned-only", action="store_true")
+    user_role_list_parser.add_argument("--vk-cr-code")
     user_role_list_parser.set_defaults(func=command_user_role_list)
 
     org_tree_parser = subparsers.add_parser("org-tree", help="查询组织树")
@@ -904,6 +1021,9 @@ def build_parser():
     user_permissions_parser = subparsers.add_parser("user-permissions", help="汇总员工在某应用下的页面和按钮权限")
     user_permissions_parser.add_argument("user_id", type=int)
     user_permissions_parser.add_argument("--app-id", type=int, required=True)
+    user_permissions_parser.add_argument("--vk-cr-code")
+    user_permissions_parser.add_argument("--cr-codes")
+    user_permissions_parser.add_argument("--include-unowned", action="store_true")
     user_permissions_parser.set_defaults(func=command_user_permissions)
 
     permission_check_parser = subparsers.add_parser("permission-check", help="校验功能权限")
